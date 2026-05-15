@@ -44,14 +44,18 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
   body {
-    font-family: var(--serif);
-    color: var(--ink);
-    background: var(--paper);
-    line-height: 1.6;
-    overflow-x: hidden;
-    filter: saturate(var(--saturation)) brightness(var(--brightness)) hue-rotate(var(--hue-rotate));
-    transition: filter 2.4s var(--ease);
+  font-family: var(--serif);
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.6;
+  overflow-x: hidden;
   }
+
+/* Add this new class */
+.page-wrapper {
+  filter: saturate(var(--saturation)) brightness(var(--brightness)) hue-rotate(var(--hue-rotate));
+  transition: filter 2.4s var(--ease);
+}
   a { color: inherit; text-decoration: none; cursor: pointer; }
   img, svg { display: block; max-width: 100%; }
   button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
@@ -540,39 +544,7 @@
     display: flex; justify-content: space-between; align-items: center;
     font-size: 0.78rem; color: rgba(244, 234, 215, 0.5);
   }
-  .discover-button {
-    position: fixed;
-    top: 50%;
-    right: 2.5rem;
-    transform: translateY(-50%);
-    z-index: 150;
-    width: 3.5rem;
-    height: 3.5rem;
-    border-radius: 50%;
-    border: 2px solid var(--sun-deep);
-    background: rgba(209, 138, 62, 0.08);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    color: var(--sun-deep);
-    font-family: var(--sans);
-    font-size: 2rem;
-    font-weight: 300;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.5s var(--ease);
-    box-shadow: 0 8px 24px -6px rgba(209, 138, 62, 0.15);
-  }
-  .discover-button:hover {
-    border-color: var(--sun);
-    background: rgba(240, 196, 116, 0.12);
-    box-shadow: 0 12px 40px -8px rgba(209, 138, 62, 0.25);
-    transform: translateY(-50%) scale(1.08);
-  }
-  .discover-button:active {
-    transform: translateY(-50%) scale(0.96);
-  }
+  /* DISCOVER BUTTON: removed; hidden page is reached via in-page links only */
 
   .footer-hidden-link {
     color: rgba(244, 234, 215, 0.18);
@@ -606,20 +578,18 @@
 
   /* HIDDEN PAGE */
   .hidden-page {
-    display: none;
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    z-index: 9999;
+    z-index: 9000;
     background: #1a130b;
     overflow-y: auto;
     opacity: 0;
-    transform: scale(0.95);
-    transition: opacity 1.2s var(--ease), transform 1.2s var(--ease);
+    pointer-events: none;
+    transition: opacity 1.2s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .hidden-page.active {
-    display: block !important;
     opacity: 1;
-    transform: scale(1);
+    pointer-events: auto;
   }
   .room {
     max-width: 680px;
@@ -699,7 +669,7 @@
     display: none;
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    z-index: 9999;
+    z-index: 9500;
     background: #0a0805;
     overflow-y: auto;
     font-family: var(--serif);
@@ -764,12 +734,6 @@
     .footer-bottom { flex-direction: column; gap: 1.2rem; text-align: center; }
     .hero-stats { gap: 2.2rem; }
     .blob { filter: blur(60px); }
-    .discover-button {
-      width: 3rem;
-      height: 3rem;
-      right: 1.5rem;
-      font-size: 1.6rem;
-    }
   }
 </style>
 </head>
@@ -1311,8 +1275,6 @@
 
 <button class="audio-toggle" id="audioToggle" onclick="toggleAudio()" title="Toggle ambient music">♪</button>
 
-<button class="discover-button" id="discoverBtn" onclick="enterHidden('button')" title="Discover the truth"></button>
-
 <div class="hidden-page" id="hiddenPage">
   <div class="room">
     <div class="room-eyebrow">there is one more thing you should know about your city</div>
@@ -1460,38 +1422,30 @@
   }
 
   function enterHidden(source) {
-    if (audioPlaying) stopAudio();
     const hp = document.getElementById('hiddenPage');
-    const btn = document.getElementById('discoverBtn');
     if (!hp) {
       console.error('Hidden page element not found');
       return;
     }
-    
-    if (btn && source === 'button') {
-      btn.style.pointerEvents = 'none';
-      btn.style.opacity = '0.5';
-    }
-    
+
     hp.classList.add('active');
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
     setTimeout(() => { hp.scrollTop = 0; }, 0);
     state.seen = true;
     saveState();
+
+    if (audioPlaying) setAudioMode('dark');
   }
 
   function returnToOmelas() {
     const hp = document.getElementById('hiddenPage');
-    const btn = document.getElementById('discoverBtn');
     hp.classList.remove('active');
     document.documentElement.style.overflow = '';
     document.body.style.overflow = '';
-    if (btn) {
-      btn.style.pointerEvents = 'auto';
-      btn.style.opacity = '1';
-    }
     setTimeout(() => applySeenState(true), 1200);
+
+    if (audioPlaying) setAudioMode('light');
   }
 
   function walkAway() {
@@ -1519,54 +1473,276 @@
     try { window.close(); } catch (e) {}
   }
 
-  let audioCtx = null, audioPlaying = false, audioNodes = [];
+  // ---- Audio engine: morphable light/dark ambient ----
+  let audioCtx = null, audioPlaying = false;
+  let audioMode = 'light';
+  let masterGain = null;
+  let padNodes = [];      // sustained pad oscillators (retuned on mode change)
+  let melodyGain = null;  // gain bus for plucked melody (faded out in dark)
+  let droneGain = null;   // gain bus for dark drone + noise (faded in in dark)
+  let droneNodes = [];
+  let melodyTimer = null;
+  let droneTimer = null;
+
+  // Light-mode pad notes (C major triad: C4, E4, G4) and dark-mode equivalents
+  // (F#3 minor triad: F#3, A3, C#4). Picked so the drop sounds eerie, not random.
+  const PAD_LIGHT = [261.63, 329.63, 392.00];
+  const PAD_DARK  = [185.00, 220.00, 277.18];
+
+  // Simple C-major motif for the melody, in Hz. Loops with gentle variation.
+  const MELODY_NOTES = [
+    523.25, // C5
+    659.25, // E5
+    783.99, // G5
+    659.25, // E5
+    698.46, // F5
+    880.00, // A5
+    783.99, // G5
+    523.25  // C5
+  ];
 
   function startAudio() {
     if (audioPlaying) return;
     try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
     catch (e) { return; }
 
-    const seen = state.seen;
-    const baseFreqs = seen ? [130.81, 164.81, 195.00] : [130.81, 164.81, 196.00];
-    const masterGain = audioCtx.createGain();
+    masterGain = audioCtx.createGain();
     masterGain.gain.value = 0;
-    masterGain.gain.linearRampToValueAtTime(seen ? 0.05 : 0.09, audioCtx.currentTime + 3);
+    masterGain.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 3);
     masterGain.connect(audioCtx.destination);
 
-    baseFreqs.forEach((f, i) => {
+    // Pad layer: three detuned sine+triangle pairs, one per chord tone.
+    PAD_LIGHT.forEach((f, i) => {
       const osc1 = audioCtx.createOscillator();
       const osc2 = audioCtx.createOscillator();
       osc1.type = 'sine';
       osc2.type = 'triangle';
       osc1.frequency.value = f;
       osc2.frequency.value = f * 2;
-      const g = audioCtx.createGain();
-      g.gain.value = i === 0 ? 0.35 : (i === 1 ? 0.25 : 0.20);
+
+      const voiceGain = audioCtx.createGain();
+      voiceGain.gain.value = i === 0 ? 0.30 : (i === 1 ? 0.22 : 0.18);
+
+      // Slow LFO for breathing detune
       const lfo = audioCtx.createOscillator();
       lfo.type = 'sine';
       lfo.frequency.value = 0.08 + i * 0.03;
       const lfoGain = audioCtx.createGain();
-      lfoGain.gain.value = seen ? 2.8 : 1.2;
+      lfoGain.gain.value = 1.4;
       lfo.connect(lfoGain);
       lfoGain.connect(osc1.detune);
-      osc1.connect(g);
-      osc2.connect(g);
-      g.connect(masterGain);
+
+      osc1.connect(voiceGain);
+      osc2.connect(voiceGain);
+      voiceGain.connect(masterGain);
       osc1.start(); osc2.start(); lfo.start();
-      audioNodes.push(osc1, osc2, lfo);
+      padNodes.push({ osc1, osc2, lfo, lfoGain, voiceGain });
     });
 
+    // Melody bus (light mode only audible)
+    melodyGain = audioCtx.createGain();
+    melodyGain.gain.value = 0.0;
+    melodyGain.gain.linearRampToValueAtTime(0.10, audioCtx.currentTime + 4);
+    melodyGain.connect(masterGain);
+
+    // Drone bus (dark mode only audible)
+    droneGain = audioCtx.createGain();
+    droneGain.gain.value = 0.0;
+    droneGain.connect(masterGain);
+
+    // Set up a low rumble that lives on the drone bus and is silent until dark.
+    setupDroneLayer();
+
     audioPlaying = true;
+    audioMode = state.seen && document.getElementById('hiddenPage').classList.contains('active') ? 'dark' : 'light';
+    if (audioMode === 'dark') applyModeImmediate('dark');
+
+    scheduleMelody();
+    scheduleDroneEvents();
+
     document.getElementById('audioToggle').classList.add('on');
+  }
+
+  function setupDroneLayer() {
+    // A pair of low oscillators (root + minor second cluster) plus a filtered
+    // noise source for the rumbling floor. All routed through droneGain which
+    // stays at 0 until we flip to dark.
+    [55.00, 58.27].forEach((f, i) => {
+      const osc = audioCtx.createOscillator();
+      osc.type = i === 0 ? 'sine' : 'triangle';
+      osc.frequency.value = f;
+      const g = audioCtx.createGain();
+      g.gain.value = i === 0 ? 0.45 : 0.20;
+      osc.connect(g);
+      g.connect(droneGain);
+      osc.start();
+      droneNodes.push(osc);
+    });
+
+    // Brown-noise-ish rumble via short looping buffer
+    const bufLen = audioCtx.sampleRate * 2;
+    const buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+    const data = buf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < bufLen; i++) {
+      const white = Math.random() * 2 - 1;
+      last = (last + 0.02 * white) / 1.02;
+      data[i] = last * 3.5;
+    }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buf;
+    noise.loop = true;
+    const noiseFilter = audioCtx.createBiquadFilter();
+    noiseFilter.type = 'lowpass';
+    noiseFilter.frequency.value = 220;
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.value = 0.55;
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(droneGain);
+    noise.start();
+    droneNodes.push(noise);
+  }
+
+  // Plays a single plucked note on the melody bus
+  function playMelodyNote(freq, when, durSec) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0, when);
+    g.gain.linearRampToValueAtTime(0.7, when + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.001, when + durSec);
+    osc.connect(g);
+    g.connect(melodyGain);
+    osc.start(when);
+    osc.stop(when + durSec + 0.05);
+  }
+
+  // Plays a dissonant cluster for the dark mode "events"
+  function playDarkAccent(when) {
+    if (!audioCtx) return;
+    [110.00, 116.54].forEach((f, i) => { // A2 + Bb2 cluster, low and ugly
+      const osc = audioCtx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = f;
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0, when);
+      g.gain.linearRampToValueAtTime(0.18, when + 0.6);
+      g.gain.exponentialRampToValueAtTime(0.001, when + 5.0);
+      osc.connect(g);
+      g.connect(droneGain);
+      osc.start(when);
+      osc.stop(when + 5.1);
+    });
+  }
+
+  let melodyIdx = 0;
+  function scheduleMelody() {
+    if (!audioPlaying) return;
+    // Only audible in light mode (melodyGain is faded down in dark), but we can
+    // skip scheduling entirely in dark to save cycles.
+    if (audioMode === 'light' && audioCtx) {
+      const noteDur = 2.4;
+      const when = audioCtx.currentTime + 0.05;
+      playMelodyNote(MELODY_NOTES[melodyIdx % MELODY_NOTES.length], when, noteDur);
+      melodyIdx++;
+    }
+    melodyTimer = setTimeout(scheduleMelody, 1700);
+  }
+
+  function scheduleDroneEvents() {
+    if (!audioPlaying) return;
+    if (audioMode === 'dark' && audioCtx) {
+      playDarkAccent(audioCtx.currentTime + 0.05);
+    }
+    // Roughly every 6-11 seconds, irregular feel
+    droneTimer = setTimeout(scheduleDroneEvents, 6000 + Math.random() * 5000);
+  }
+
+  // Smoothly retune the pad and crossfade melody/drone buses.
+  function setAudioMode(mode) {
+    if (!audioCtx || !audioPlaying) return;
+    if (mode === audioMode) return;
+    audioMode = mode;
+    const now = audioCtx.currentTime;
+    const targetFreqs = mode === 'dark' ? PAD_DARK : PAD_LIGHT;
+    const fadeT = 3.0;
+
+    padNodes.forEach((v, i) => {
+      const f = targetFreqs[i];
+      // Use linearRamp on frequency directly (cancelScheduled to avoid stacking)
+      v.osc1.frequency.cancelScheduledValues(now);
+      v.osc2.frequency.cancelScheduledValues(now);
+      v.osc1.frequency.setValueAtTime(v.osc1.frequency.value, now);
+      v.osc2.frequency.setValueAtTime(v.osc2.frequency.value, now);
+      v.osc1.frequency.linearRampToValueAtTime(f, now + fadeT);
+      v.osc2.frequency.linearRampToValueAtTime(f * 2, now + fadeT);
+      // Slow the LFO and deepen detune wobble in dark
+      v.lfoGain.gain.cancelScheduledValues(now);
+      v.lfoGain.gain.linearRampToValueAtTime(mode === 'dark' ? 4.5 : 1.4, now + fadeT);
+    });
+
+    // Crossfade buses
+    melodyGain.gain.cancelScheduledValues(now);
+    droneGain.gain.cancelScheduledValues(now);
+    melodyGain.gain.setValueAtTime(melodyGain.gain.value, now);
+    droneGain.gain.setValueAtTime(droneGain.gain.value, now);
+    if (mode === 'dark') {
+      melodyGain.gain.linearRampToValueAtTime(0.0, now + fadeT);
+      droneGain.gain.linearRampToValueAtTime(0.45, now + fadeT);
+      // Pull master down a touch
+      masterGain.gain.cancelScheduledValues(now);
+      masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+      masterGain.gain.linearRampToValueAtTime(0.14, now + fadeT);
+    } else {
+      melodyGain.gain.linearRampToValueAtTime(0.10, now + fadeT);
+      droneGain.gain.linearRampToValueAtTime(0.0, now + fadeT);
+      masterGain.gain.cancelScheduledValues(now);
+      masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+      masterGain.gain.linearRampToValueAtTime(0.18, now + fadeT);
+    }
+  }
+
+  // For starting in dark mode (e.g. audio toggled on while already in hidden page)
+  function applyModeImmediate(mode) {
+    if (!audioCtx) return;
+    const targetFreqs = mode === 'dark' ? PAD_DARK : PAD_LIGHT;
+    padNodes.forEach((v, i) => {
+      v.osc1.frequency.value = targetFreqs[i];
+      v.osc2.frequency.value = targetFreqs[i] * 2;
+      v.lfoGain.gain.value = mode === 'dark' ? 4.5 : 1.4;
+    });
+    if (mode === 'dark') {
+      melodyGain.gain.value = 0;
+      droneGain.gain.setValueAtTime(0, audioCtx.currentTime);
+      droneGain.gain.linearRampToValueAtTime(0.45, audioCtx.currentTime + 3);
+      masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+      masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+      masterGain.gain.linearRampToValueAtTime(0.14, audioCtx.currentTime + 3);
+    }
   }
 
   function stopAudio() {
     if (!audioPlaying || !audioCtx) return;
-    audioNodes.forEach(n => { try { n.stop(); } catch (e) {} });
-    audioNodes = [];
-    try { audioCtx.close(); } catch (e) {}
-    audioCtx = null;
-    audioPlaying = false;
+    if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = null; }
+    if (droneTimer)  { clearTimeout(droneTimer);  droneTimer  = null; }
+    const now = audioCtx.currentTime;
+    if (masterGain) {
+      masterGain.gain.cancelScheduledValues(now);
+      masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+      masterGain.gain.linearRampToValueAtTime(0, now + 0.8);
+    }
+    setTimeout(() => {
+      padNodes.forEach(v => { try { v.osc1.stop(); v.osc2.stop(); v.lfo.stop(); } catch (e) {} });
+      droneNodes.forEach(n => { try { n.stop(); } catch (e) {} });
+      padNodes = []; droneNodes = [];
+      try { audioCtx.close(); } catch (e) {}
+      audioCtx = null;
+      audioPlaying = false;
+      melodyGain = droneGain = masterGain = null;
+    }, 900);
     document.getElementById('audioToggle').classList.remove('on');
   }
 
