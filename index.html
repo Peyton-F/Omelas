@@ -140,7 +140,7 @@
     position: fixed; bottom: 1.8rem; right: 1.8rem; z-index: 200;
     width: 48px; height: 48px; border-radius: 50%;
     border: 1px solid rgba(40, 32, 26, 0.15);
-    background: rgba(253, 246, 232, 0.8);
+    background: rgba(228, 161, 27, 0.893);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     font-family: var(--sans); color: var(--ink-soft);
@@ -1479,26 +1479,41 @@
   let masterGain = null;
   let padNodes = [];      // sustained pad oscillators (retuned on mode change)
   let melodyGain = null;  // gain bus for plucked melody (faded out in dark)
+  let harmonyGain = null; // soft countermelody layer for light mode
+  let shimmerGain = null; // bright bell layer for light mode
   let droneGain = null;   // gain bus for dark drone + noise (faded in in dark)
   let droneNodes = [];
   let melodyTimer = null;
+  let arpeggioTimer = null;
   let droneTimer = null;
 
-  // Light-mode pad notes (C major triad: C4, E4, G4) and dark-mode equivalents
-  // (F#3 minor triad: F#3, A3, C#4). Picked so the drop sounds eerie, not random.
-  const PAD_LIGHT = [261.63, 329.63, 392.00];
-  const PAD_DARK  = [185.00, 220.00, 277.18];
+  // Light-mode pad notes (D major add6: D4, F#4, A4, B4) and dark-mode equivalents
+  // (D minor with a flat second: D3, F3, A3, Eb4). The shared root lets the
+  // hidden-page transition feel like the same song turning bleak.
+  const PAD_LIGHT = [293.66, 369.99, 440.00, 493.88];
+  const PAD_DARK  = [146.83, 174.61, 220.00, 311.13];
+  const PAD_LIGHT_GAINS = [0.018, 0.014, 0.012, 0.01];
+  const PAD_DARK_GAINS = [0, 0, 0, 0];
+  const LIGHT_ARPEGGIO = [293.66, 369.99, 440.00, 493.88, 587.33, 493.88, 440.00, 369.99];
 
-  // Simple C-major motif for the melody, in Hz. Loops with gentle variation.
-  const MELODY_NOTES = [
-    523.25, // C5
-    659.25, // E5
-    783.99, // G5
-    659.25, // E5
-    698.46, // F5
-    880.00, // A5
-    783.99, // G5
-    523.25  // C5
+  // Sparse, piano-like phrase fragments inspired by Minecraft's gentle pauses.
+  const LIGHT_PHRASES = [
+    [
+      [440.00, 0.00, 2.8, 293.66],
+      [493.88, 2.90, 2.2, null],
+      [587.33, 6.10, 3.4, 369.99]
+    ],
+    [
+      [587.33, 0.00, 2.4, 369.99],
+      [739.99, 3.25, 1.9, null],
+      [659.25, 5.95, 2.5, 440.00],
+      [493.88, 9.10, 3.0, 293.66]
+    ],
+    [
+      [369.99, 0.00, 3.2, 293.66],
+      [440.00, 4.40, 2.4, null],
+      [587.33, 7.35, 3.0, 369.99]
+    ]
   ];
 
   function startAudio() {
@@ -1511,17 +1526,17 @@
     masterGain.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 3);
     masterGain.connect(audioCtx.destination);
 
-    // Pad layer: three detuned sine+triangle pairs, one per chord tone.
+    // Soft chord bed plus moving arpeggios keep the happy page full without one loud held note.
     PAD_LIGHT.forEach((f, i) => {
       const osc1 = audioCtx.createOscillator();
       const osc2 = audioCtx.createOscillator();
       osc1.type = 'sine';
-      osc2.type = 'triangle';
+      osc2.type = 'sine';
       osc1.frequency.value = f;
       osc2.frequency.value = f * 2;
 
       const voiceGain = audioCtx.createGain();
-      voiceGain.gain.value = i === 0 ? 0.30 : (i === 1 ? 0.22 : 0.18);
+      voiceGain.gain.value = PAD_LIGHT_GAINS[i];
 
       // Slow LFO for breathing detune
       const lfo = audioCtx.createOscillator();
@@ -1533,24 +1548,33 @@
       lfoGain.connect(osc1.detune);
 
       osc1.connect(voiceGain);
-      osc2.connect(voiceGain);
       voiceGain.connect(masterGain);
       osc1.start(); osc2.start(); lfo.start();
       padNodes.push({ osc1, osc2, lfo, lfoGain, voiceGain });
     });
 
-    // Melody bus (light mode only audible)
+    // Layered light-mode buses.
     melodyGain = audioCtx.createGain();
     melodyGain.gain.value = 0.0;
-    melodyGain.gain.linearRampToValueAtTime(0.10, audioCtx.currentTime + 4);
+    melodyGain.gain.linearRampToValueAtTime(0.145, audioCtx.currentTime + 4);
     melodyGain.connect(masterGain);
+
+    harmonyGain = audioCtx.createGain();
+    harmonyGain.gain.value = 0.0;
+    harmonyGain.gain.linearRampToValueAtTime(0.075, audioCtx.currentTime + 5);
+    harmonyGain.connect(masterGain);
+
+    shimmerGain = audioCtx.createGain();
+    shimmerGain.gain.value = 0.0;
+    shimmerGain.gain.linearRampToValueAtTime(0.032, audioCtx.currentTime + 6);
+    shimmerGain.connect(masterGain);
 
     // Drone bus (dark mode only audible)
     droneGain = audioCtx.createGain();
     droneGain.gain.value = 0.0;
     droneGain.connect(masterGain);
 
-    // Set up a low rumble that lives on the drone bus and is silent until dark.
+    // Dark-mode bus sources stay silent until short, scheduled accents use them.
     setupDroneLayer();
 
     audioPlaying = true;
@@ -1558,21 +1582,21 @@
     if (audioMode === 'dark') applyModeImmediate('dark');
 
     scheduleMelody();
+    scheduleArpeggio();
     scheduleDroneEvents();
 
     document.getElementById('audioToggle').classList.add('on');
   }
 
   function setupDroneLayer() {
-    // A pair of low oscillators (root + minor second cluster) plus a filtered
-    // noise source for the rumbling floor. All routed through droneGain which
-    // stays at 0 until we flip to dark.
-    [55.00, 58.27].forEach((f, i) => {
+    // Low oscillators and filtered noise are available for dark-mode accents,
+    // but their constant feeds stay silent so the hidden page is intermittent.
+    [36.71, 38.89, 55.00].forEach((f, i) => {
       const osc = audioCtx.createOscillator();
       osc.type = i === 0 ? 'sine' : 'triangle';
       osc.frequency.value = f;
       const g = audioCtx.createGain();
-      g.gain.value = i === 0 ? 0.45 : 0.20;
+      g.gain.value = 0;
       osc.connect(g);
       g.connect(droneGain);
       osc.start();
@@ -1596,7 +1620,7 @@
     noiseFilter.type = 'lowpass';
     noiseFilter.frequency.value = 220;
     const noiseGain = audioCtx.createGain();
-    noiseGain.gain.value = 0.55;
+    noiseGain.gain.value = 0;
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
     noiseGain.connect(droneGain);
@@ -1605,51 +1629,111 @@
   }
 
   // Plays a single plucked note on the melody bus
-  function playMelodyNote(freq, when, durSec) {
+  function playMelodyNote(freq, when, durSec, destination = melodyGain, type = 'sine', peak = 0.7) {
     if (!audioCtx) return;
     const osc = audioCtx.createOscillator();
-    osc.type = 'sine';
+    osc.type = type;
     osc.frequency.value = freq;
     const g = audioCtx.createGain();
     g.gain.setValueAtTime(0, when);
-    g.gain.linearRampToValueAtTime(0.7, when + 0.04);
+    g.gain.linearRampToValueAtTime(peak, when + 0.10);
     g.gain.exponentialRampToValueAtTime(0.001, when + durSec);
     osc.connect(g);
-    g.connect(melodyGain);
+    g.connect(destination);
     osc.start(when);
     osc.stop(when + durSec + 0.05);
+  }
+
+  function playBell(freq, when, durSec) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const overtone = audioCtx.createOscillator();
+    osc.type = 'sine';
+    overtone.type = 'sine';
+    osc.frequency.value = freq;
+    overtone.frequency.value = freq * 2.01;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0, when);
+    g.gain.linearRampToValueAtTime(0.18, when + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, when + durSec);
+    osc.connect(g);
+    overtone.connect(g);
+    g.connect(shimmerGain);
+    osc.start(when);
+    overtone.start(when);
+    osc.stop(when + durSec + 0.05);
+    overtone.stop(when + durSec + 0.05);
   }
 
   // Plays a dissonant cluster for the dark mode "events"
   function playDarkAccent(when) {
     if (!audioCtx) return;
-    [110.00, 116.54].forEach((f, i) => { // A2 + Bb2 cluster, low and ugly
+    [73.42, 77.78, 110.00].forEach((f, i) => {
       const osc = audioCtx.createOscillator();
-      osc.type = 'triangle';
+      osc.type = i === 2 ? 'sine' : 'triangle';
       osc.frequency.value = f;
       const g = audioCtx.createGain();
       g.gain.setValueAtTime(0, when);
-      g.gain.linearRampToValueAtTime(0.18, when + 0.6);
-      g.gain.exponentialRampToValueAtTime(0.001, when + 5.0);
+      g.gain.linearRampToValueAtTime(i === 0 ? 0.32 : 0.20, when + 0.9);
+      g.gain.exponentialRampToValueAtTime(0.001, when + 5.8);
       osc.connect(g);
       g.connect(droneGain);
       osc.start(when);
-      osc.stop(when + 5.1);
+      osc.stop(when + 5.9);
+    });
+    [220.00, 233.08].forEach((f, i) => {
+      const osc = audioCtx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = f;
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0, when + 1.1 + i * 0.35);
+      g.gain.linearRampToValueAtTime(0.13, when + 1.7 + i * 0.35);
+      g.gain.exponentialRampToValueAtTime(0.001, when + 4.4 + i * 0.35);
+      osc.connect(g);
+      g.connect(droneGain);
+      osc.start(when + 1.1 + i * 0.35);
+      osc.stop(when + 4.5 + i * 0.35);
     });
   }
 
   let melodyIdx = 0;
+  let arpIdx = 0;
   function scheduleMelody() {
     if (!audioPlaying) return;
-    // Only audible in light mode (melodyGain is faded down in dark), but we can
-    // skip scheduling entirely in dark to save cycles.
+    let nextPhraseDelay = 6000 + Math.random() * 3500;
     if (audioMode === 'light' && audioCtx) {
-      const noteDur = 2.4;
-      const when = audioCtx.currentTime + 0.05;
-      playMelodyNote(MELODY_NOTES[melodyIdx % MELODY_NOTES.length], when, noteDur);
+      const phrase = LIGHT_PHRASES[melodyIdx % LIGHT_PHRASES.length];
+      const start = audioCtx.currentTime + 0.08;
+      phrase.forEach(([freq, offset, dur, harmony], noteIdx) => {
+        playMelodyNote(freq, start + offset, dur, melodyGain, 'sine', 0.30);
+        if (harmony) {
+          playMelodyNote(harmony, start + offset + 0.12, dur + 0.9, harmonyGain, 'sine', 0.18);
+        }
+        if (noteIdx === phrase.length - 1) {
+          playBell(freq * 2, start + offset + 0.32, 2.6);
+        }
+      });
+      const lastNote = phrase[phrase.length - 1];
+      nextPhraseDelay = (lastNote[1] + lastNote[2]) * 1000 + 1800 + Math.random() * 3500;
       melodyIdx++;
     }
-    melodyTimer = setTimeout(scheduleMelody, 1700);
+    melodyTimer = setTimeout(scheduleMelody, nextPhraseDelay);
+  }
+
+  function scheduleArpeggio() {
+    if (!audioPlaying) return;
+    if (audioMode === 'light' && audioCtx) {
+      const start = audioCtx.currentTime + 0.04;
+      for (let i = 0; i < 4; i++) {
+        const freq = LIGHT_ARPEGGIO[(arpIdx + i) % LIGHT_ARPEGGIO.length];
+        playMelodyNote(freq, start + i * 0.36, 1.15, harmonyGain, 'sine', 0.085);
+      }
+      if (arpIdx % 4 === 0) {
+        playBell(LIGHT_ARPEGGIO[(arpIdx + 4) % LIGHT_ARPEGGIO.length] * 2, start + 1.08, 1.8);
+      }
+      arpIdx = (arpIdx + 1) % LIGHT_ARPEGGIO.length;
+    }
+    arpeggioTimer = setTimeout(scheduleArpeggio, 2200 + Math.random() * 900);
   }
 
   function scheduleDroneEvents() {
@@ -1657,8 +1741,8 @@
     if (audioMode === 'dark' && audioCtx) {
       playDarkAccent(audioCtx.currentTime + 0.05);
     }
-    // Roughly every 6-11 seconds, irregular feel
-    droneTimer = setTimeout(scheduleDroneEvents, 6000 + Math.random() * 5000);
+    // Roughly every 4-8 seconds, irregular and breath-like.
+    droneTimer = setTimeout(scheduleDroneEvents, 4200 + Math.random() * 4200);
   }
 
   // Smoothly retune the pad and crossfade melody/drone buses.
@@ -1668,7 +1752,7 @@
     audioMode = mode;
     const now = audioCtx.currentTime;
     const targetFreqs = mode === 'dark' ? PAD_DARK : PAD_LIGHT;
-    const fadeT = 3.0;
+    const fadeT = mode === 'dark' ? 7.0 : 4.0;
 
     padNodes.forEach((v, i) => {
       const f = targetFreqs[i];
@@ -1679,6 +1763,12 @@
       v.osc2.frequency.setValueAtTime(v.osc2.frequency.value, now);
       v.osc1.frequency.linearRampToValueAtTime(f, now + fadeT);
       v.osc2.frequency.linearRampToValueAtTime(f * 2, now + fadeT);
+      v.voiceGain.gain.cancelScheduledValues(now);
+      v.voiceGain.gain.setValueAtTime(v.voiceGain.gain.value, now);
+      v.voiceGain.gain.linearRampToValueAtTime(
+        mode === 'dark' ? PAD_DARK_GAINS[i] : PAD_LIGHT_GAINS[i],
+        now + fadeT
+      );
       // Slow the LFO and deepen detune wobble in dark
       v.lfoGain.gain.cancelScheduledValues(now);
       v.lfoGain.gain.linearRampToValueAtTime(mode === 'dark' ? 4.5 : 1.4, now + fadeT);
@@ -1686,18 +1776,26 @@
 
     // Crossfade buses
     melodyGain.gain.cancelScheduledValues(now);
+    harmonyGain.gain.cancelScheduledValues(now);
+    shimmerGain.gain.cancelScheduledValues(now);
     droneGain.gain.cancelScheduledValues(now);
     melodyGain.gain.setValueAtTime(melodyGain.gain.value, now);
+    harmonyGain.gain.setValueAtTime(harmonyGain.gain.value, now);
+    shimmerGain.gain.setValueAtTime(shimmerGain.gain.value, now);
     droneGain.gain.setValueAtTime(droneGain.gain.value, now);
     if (mode === 'dark') {
       melodyGain.gain.linearRampToValueAtTime(0.0, now + fadeT);
-      droneGain.gain.linearRampToValueAtTime(0.45, now + fadeT);
-      // Pull master down a touch
+      harmonyGain.gain.linearRampToValueAtTime(0.0, now + fadeT * 0.75);
+      shimmerGain.gain.linearRampToValueAtTime(0.0, now + fadeT * 0.45);
+      droneGain.gain.linearRampToValueAtTime(0.62, now + fadeT);
       masterGain.gain.cancelScheduledValues(now);
       masterGain.gain.setValueAtTime(masterGain.gain.value, now);
-      masterGain.gain.linearRampToValueAtTime(0.14, now + fadeT);
+      masterGain.gain.linearRampToValueAtTime(0.18, now + fadeT);
+      playDarkAccent(now + fadeT * 0.35);
     } else {
-      melodyGain.gain.linearRampToValueAtTime(0.10, now + fadeT);
+      melodyGain.gain.linearRampToValueAtTime(0.145, now + fadeT);
+      harmonyGain.gain.linearRampToValueAtTime(0.075, now + fadeT);
+      shimmerGain.gain.linearRampToValueAtTime(0.032, now + fadeT);
       droneGain.gain.linearRampToValueAtTime(0.0, now + fadeT);
       masterGain.gain.cancelScheduledValues(now);
       masterGain.gain.setValueAtTime(masterGain.gain.value, now);
@@ -1712,21 +1810,25 @@
     padNodes.forEach((v, i) => {
       v.osc1.frequency.value = targetFreqs[i];
       v.osc2.frequency.value = targetFreqs[i] * 2;
+      v.voiceGain.gain.value = mode === 'dark' ? PAD_DARK_GAINS[i] : PAD_LIGHT_GAINS[i];
       v.lfoGain.gain.value = mode === 'dark' ? 4.5 : 1.4;
     });
     if (mode === 'dark') {
       melodyGain.gain.value = 0;
+      harmonyGain.gain.value = 0;
+      shimmerGain.gain.value = 0;
       droneGain.gain.setValueAtTime(0, audioCtx.currentTime);
-      droneGain.gain.linearRampToValueAtTime(0.45, audioCtx.currentTime + 3);
+      droneGain.gain.linearRampToValueAtTime(0.62, audioCtx.currentTime + 3);
       masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
       masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
-      masterGain.gain.linearRampToValueAtTime(0.14, audioCtx.currentTime + 3);
+      masterGain.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 3);
     }
   }
 
   function stopAudio() {
     if (!audioPlaying || !audioCtx) return;
     if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = null; }
+    if (arpeggioTimer) { clearTimeout(arpeggioTimer); arpeggioTimer = null; }
     if (droneTimer)  { clearTimeout(droneTimer);  droneTimer  = null; }
     const now = audioCtx.currentTime;
     if (masterGain) {
@@ -1741,7 +1843,7 @@
       try { audioCtx.close(); } catch (e) {}
       audioCtx = null;
       audioPlaying = false;
-      melodyGain = droneGain = masterGain = null;
+      melodyGain = harmonyGain = shimmerGain = droneGain = masterGain = null;
     }, 900);
     document.getElementById('audioToggle').classList.remove('on');
   }
