@@ -1486,6 +1486,7 @@
   let melodyTimer = null;
   let arpeggioTimer = null;
   let droneTimer = null;
+  let audioUnlockBound = false;
 
   // Light-mode pad notes (D major add6: D4, F#4, A4, B4) and dark-mode equivalents
   // (D minor with a flat second: D3, F3, A3, Eb4). The shared root lets the
@@ -1520,6 +1521,7 @@
     if (audioPlaying) return;
     try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
     catch (e) { return; }
+    if (audioCtx.resume) audioCtx.resume().catch(() => {});
 
     masterGain = audioCtx.createGain();
     masterGain.gain.value = 0;
@@ -1586,6 +1588,37 @@
     scheduleDroneEvents();
 
     document.getElementById('audioToggle').classList.add('on');
+    bindAudioUnlock();
+  }
+
+  function bindAudioUnlock() {
+    if (audioUnlockBound) return;
+    audioUnlockBound = true;
+    ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll'].forEach(type => {
+      window.addEventListener(type, unlockAudio, { passive: true });
+    });
+  }
+
+  function unbindAudioUnlock() {
+    if (!audioUnlockBound) return;
+    audioUnlockBound = false;
+    ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll'].forEach(type => {
+      window.removeEventListener(type, unlockAudio);
+    });
+  }
+
+  function unlockAudio() {
+    if (!audioCtx || !audioPlaying) {
+      startAudio();
+      return;
+    }
+    if (audioCtx.state !== 'suspended') {
+      unbindAudioUnlock();
+      return;
+    }
+    if (audioCtx.resume) {
+      audioCtx.resume().then(unbindAudioUnlock).catch(() => {});
+    }
   }
 
   function setupDroneLayer() {
@@ -1827,6 +1860,7 @@
 
   function stopAudio() {
     if (!audioPlaying || !audioCtx) return;
+    unbindAudioUnlock();
     if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = null; }
     if (arpeggioTimer) { clearTimeout(arpeggioTimer); arpeggioTimer = null; }
     if (droneTimer)  { clearTimeout(droneTimer);  droneTimer  = null; }
@@ -1849,12 +1883,22 @@
   }
 
   function toggleAudio() {
+    if (audioPlaying && audioCtx && audioCtx.state === 'suspended') {
+      unlockAudio();
+      return;
+    }
     if (audioPlaying) stopAudio();
     else startAudio();
   }
 
   if (['#truth', '#child', '#basement'].includes(window.location.hash)) {
     setTimeout(() => enterHidden('hash'), 800);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startAudio, { once: true });
+  } else {
+    setTimeout(startAudio, 0);
   }
 </script>
 
