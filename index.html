@@ -540,6 +540,40 @@
     display: flex; justify-content: space-between; align-items: center;
     font-size: 0.78rem; color: rgba(244, 234, 215, 0.5);
   }
+  .discover-button {
+    position: fixed;
+    top: 50%;
+    right: 2.5rem;
+    transform: translateY(-50%);
+    z-index: 150;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+    border: 2px solid var(--sun-deep);
+    background: rgba(209, 138, 62, 0.08);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--sun-deep);
+    font-family: var(--sans);
+    font-size: 2rem;
+    font-weight: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.5s var(--ease);
+    box-shadow: 0 8px 24px -6px rgba(209, 138, 62, 0.15);
+  }
+  .discover-button:hover {
+    border-color: var(--sun);
+    background: rgba(240, 196, 116, 0.12);
+    box-shadow: 0 12px 40px -8px rgba(209, 138, 62, 0.25);
+    transform: translateY(-50%) scale(1.08);
+  }
+  .discover-button:active {
+    transform: translateY(-50%) scale(0.96);
+  }
+
   .footer-hidden-link {
     color: rgba(244, 234, 215, 0.18);
     font-size: 0.72rem; letter-spacing: 0.34em;
@@ -578,14 +612,16 @@
     z-index: 9999;
     background: #1a130b;
     overflow-y: auto;
-    filter: none;
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 1.2s var(--ease), transform 1.2s var(--ease);
   }
   .hidden-page.active {
     display: block !important;
+    opacity: 1;
+    transform: scale(1);
   }
   .room {
-    position: relative;
-    z-index: 1;
     max-width: 680px;
     margin: 0 auto;
     padding: 5rem 2rem 4rem;
@@ -728,6 +764,12 @@
     .footer-bottom { flex-direction: column; gap: 1.2rem; text-align: center; }
     .hero-stats { gap: 2.2rem; }
     .blob { filter: blur(60px); }
+    .discover-button {
+      width: 3rem;
+      height: 3rem;
+      right: 1.5rem;
+      font-size: 1.6rem;
+    }
   }
 </style>
 </head>
@@ -1210,7 +1252,7 @@
       <div class="faq-item">
         <div class="faq-q" onclick="toggleFaq(this)">Why do some people leave Omelas?</div>
         <div class="faq-a">
-          <p>A small number of citizens, each year, leave the city. They do not return, and they do not say where they go. It is a sorrow, but a familiar one. We do not stop them. We do not follow them. We honor their leaving as we honor the choice of any citizen to choose their own life.<span class="ellipsis"> the reasons are private to each. <a href="#truth" data-hidden-entry="faq">read more</a></span></p>
+          <p>A small number of citizens, each year, leave the city. They do not return, and they do not say where they go. It is a sorrow, but a familiar one. We do not stop them. We do not follow them. We honor their leaving as we honor the choice of any citizen to choose their own life.<span class="ellipsis"> the reasons are private to each. <a onclick="enterHidden('faq')">read more</a></span></p>
         </div>
       </div>
 
@@ -1262,12 +1304,14 @@
   <div class="footer-bottom">
     <div>Omelas &middot; this is a city without sorrow</div>
     <div>
-      <a class="footer-hidden-link" href="#truth" data-hidden-entry="footer">there is one more thing</a>
+      <span class="footer-hidden-link" onclick="enterHidden('footer')">there is one more thing</span>
     </div>
   </div>
 </footer>
 
 <button class="audio-toggle" id="audioToggle" onclick="toggleAudio()" title="Toggle ambient music">♪</button>
+
+<button class="discover-button" id="discoverBtn" onclick="enterHidden('button')" title="Discover the truth"></button>
 
 <div class="hidden-page" id="hiddenPage">
   <div class="room">
@@ -1337,21 +1381,16 @@
   }
   saveState();
 
-  const revealEls = document.querySelectorAll('.reveal, .reveal-stagger');
-  if ('IntersectionObserver' in window) {
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('in');
-          io.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.12, rootMargin: '0px 0px -80px 0px' });
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('in');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -80px 0px' });
 
-    revealEls.forEach(el => io.observe(el));
-  } else {
-    revealEls.forEach(el => el.classList.add('in'));
-  }
+  document.querySelectorAll('.reveal, .reveal-stagger').forEach(el => io.observe(el));
 
   const nav = document.getElementById('mainNav');
   window.addEventListener('scroll', () => {
@@ -1423,26 +1462,36 @@
   function enterHidden(source) {
     if (audioPlaying) stopAudio();
     const hp = document.getElementById('hiddenPage');
+    const btn = document.getElementById('discoverBtn');
+    if (!hp) {
+      console.error('Hidden page element not found');
+      return;
+    }
+    
+    if (btn && source === 'button') {
+      btn.style.pointerEvents = 'none';
+      btn.style.opacity = '0.5';
+    }
+    
     hp.classList.add('active');
     document.documentElement.style.overflow = 'hidden';
-    hp.scrollTop = 0;
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => { hp.scrollTop = 0; }, 0);
     state.seen = true;
     saveState();
   }
 
-  document.querySelectorAll('[data-hidden-entry]').forEach(link => {
-    link.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      enterHidden(link.dataset.hiddenEntry || 'link');
-    });
-  });
-
   function returnToOmelas() {
     const hp = document.getElementById('hiddenPage');
+    const btn = document.getElementById('discoverBtn');
     hp.classList.remove('active');
     document.documentElement.style.overflow = '';
-    setTimeout(() => applySeenState(true), 600);
+    document.body.style.overflow = '';
+    if (btn) {
+      btn.style.pointerEvents = 'auto';
+      btn.style.opacity = '1';
+    }
+    setTimeout(() => applySeenState(true), 1200);
   }
 
   function walkAway() {
