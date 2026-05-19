@@ -543,6 +543,8 @@
     border-top: 1px solid rgba(244, 234, 215, 0.1);
     display: flex; justify-content: space-between; align-items: center;
     font-size: 0.78rem; color: rgba(244, 234, 215, 0.5);
+    gap: 1.5rem;
+    flex-wrap: wrap;
   }
   /* DISCOVER BUTTON: removed; hidden page is reached via in-page links only */
 
@@ -555,6 +557,21 @@
   .footer-hidden-link:hover {
     color: rgba(244, 234, 215, 0.55);
     letter-spacing: 0.4em;
+  }
+
+  .footer-about-link {
+    color: rgba(244, 234, 215, 0.45);
+    font-size: 0.74rem; letter-spacing: 0.22em;
+    transition: color 0.6s var(--ease), letter-spacing 0.6s var(--ease);
+    text-transform: lowercase; font-style: italic;
+    cursor: pointer;
+    border-bottom: 1px dotted rgba(244, 234, 215, 0.2);
+    padding-bottom: 2px;
+  }
+  .footer-about-link:hover {
+    color: var(--sun);
+    letter-spacing: 0.26em;
+    border-bottom-color: var(--sun);
   }
 
   /* POST-REVEAL */
@@ -700,6 +717,202 @@
     font-style: normal;
   }
 
+  /* ABOUT-ME PAGE */
+  .about-page {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 9200;
+    background: var(--paper);
+    overflow-y: auto;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .about-page.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .about-page-inner {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 5rem 2rem 5rem;
+    position: relative;
+    z-index: 2;
+  }
+  .about-close {
+    position: absolute;
+    top: 1.6rem; right: 1.6rem;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    border: 1px solid rgba(40, 32, 26, 0.15);
+    background: rgba(253, 246, 232, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--ink-soft);
+    font-family: var(--sans);
+    font-size: 1.2rem;
+    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.4s var(--ease);
+    z-index: 10;
+  }
+  .about-close:hover {
+    background: var(--paper);
+    color: var(--ink);
+    transform: rotate(90deg);
+  }
+  .about-page .room-eyebrow {
+    color: var(--sun-deep);
+  }
+  .about-page h1 {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: clamp(2.4rem, 5vw, 3.6rem);
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    margin-bottom: 2rem;
+    font-style: normal;
+    font-variation-settings: 'opsz' 144;
+  }
+  .about-page h1 em {
+    font-style: italic;
+    color: var(--sun-deep);
+    font-weight: 400;
+  }
+  .about-page .lede {
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    font-weight: 300;
+    margin-bottom: 2.4rem;
+    font-style: italic;
+  }
+  .about-page p {
+    font-size: 1.06rem;
+    color: var(--ink-soft);
+    margin-bottom: 1.3rem;
+    font-weight: 300;
+    line-height: 1.7;
+  }
+  .about-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.4rem;
+    margin: 3rem 0;
+    padding: 2rem 0;
+    border-top: 1px solid rgba(40, 32, 26, 0.1);
+    border-bottom: 1px solid rgba(40, 32, 26, 0.1);
+  }
+  .about-meta-item {
+    font-family: var(--sans);
+  }
+  .about-meta-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--sun-deep);
+    margin-bottom: 0.5rem;
+  }
+  .about-meta-value {
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    color: var(--ink);
+    font-weight: 400;
+  }
+  .about-meta-value em {
+    font-style: italic;
+    color: var(--ink-soft);
+    font-weight: 300;
+  }
+  .about-links {
+    margin-top: 2.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+  .about-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 1.6rem;
+    border: 1px solid rgba(40, 32, 26, 0.12);
+    border-radius: 16px;
+    background: rgba(253, 246, 232, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    font-family: var(--serif);
+    color: var(--ink);
+    transition: all 0.5s var(--ease);
+    text-decoration: none;
+  }
+  .about-link:hover {
+    transform: translateY(-3px);
+    background: rgba(253, 246, 232, 0.85);
+    box-shadow: 0 20px 40px -20px rgba(40, 32, 26, 0.25);
+    border-color: var(--sun-deep);
+  }
+  .about-link-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .about-link-label {
+    font-family: var(--sans);
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--sun-deep);
+  }
+  .about-link-value {
+    font-family: var(--serif);
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .about-link-arrow {
+    font-family: var(--sans);
+    font-size: 1.1rem;
+    color: var(--ink-faint);
+    transition: transform 0.5s var(--ease), color 0.5s var(--ease);
+  }
+  .about-link:hover .about-link-arrow {
+    transform: translateX(6px);
+    color: var(--sun-deep);
+  }
+  .about-credit {
+    margin-top: 4rem;
+    padding-top: 2.4rem;
+    border-top: 1px solid rgba(40, 32, 26, 0.1);
+    font-family: var(--sans);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+    line-height: 1.7;
+    text-align: center;
+  }
+  .about-credit em {
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    letter-spacing: 0;
+  }
+  .about-sun-art {
+    position: absolute;
+    top: -120px;
+    right: -180px;
+    width: 480px;
+    height: 480px;
+    border-radius: 50%;
+    background: radial-gradient(circle at center, rgba(254, 240, 196, 0.7) 0%, rgba(240, 196, 116, 0.25) 40%, transparent 70%);
+    z-index: 0;
+    pointer-events: none;
+    animation: sunDrift 60s ease-in-out infinite alternate;
+  }
+
   .return-banner {
     display: none;
     position: fixed; top: 0; left: 0; right: 0; z-index: 90;
@@ -734,6 +947,8 @@
     .footer-bottom { flex-direction: column; gap: 1.2rem; text-align: center; }
     .hero-stats { gap: 2.2rem; }
     .blob { filter: blur(60px); }
+    .about-meta { grid-template-columns: 1fr; gap: 1.2rem; }
+    .about-page-inner { padding: 4rem 1.4rem 4rem; }
   }
 </style>
 </head>
@@ -1267,13 +1482,68 @@
   </div>
   <div class="footer-bottom">
     <div>Omelas &middot; this is a city without sorrow</div>
-    <div>
+    <div style="display: flex; gap: 1.8rem; align-items: center; flex-wrap: wrap; justify-content: flex-end;">
+      <span class="footer-about-link" onclick="enterAbout()">about the cartographer</span>
       <span class="footer-hidden-link" onclick="enterHidden('footer')">there is one more thing</span>
     </div>
   </div>
 </footer>
 
 <button class="audio-toggle" id="audioToggle" onclick="toggleAudio()" title="Toggle ambient music">♪</button>
+
+<div class="about-page" id="aboutPage">
+  <div class="about-sun-art"></div>
+  <button class="about-close" onclick="exitAbout()" aria-label="Close">×</button>
+  <div class="about-page-inner">
+    <div class="room-eyebrow">about the cartographer</div>
+    <h1>The city was built<br>by <em>one student</em>,<br>over many evenings.</h1>
+    <p class="lede">Hi, I'm Peyton. I made this. Omelas is a real city in fiction, and this is my attempt at giving it a website.</p>
+    <p>I'm a mechanical engineering student studying in California, with one foot in CAD software and the other in code. When I'm not modeling gear trains or wiring up Arduinos, I'm usually building software tools for whatever problem won't leave me alone that week. If you want the longer version, my personal site has more about me and what I'm currently working on.</p>
+    <p>This site is a creative adaptation of Ursula K. Le Guin's short story <em>"The Ones Who Walk Away from Omelas."</em> It started as a question: what would the city's own promotional website look like, if it had one? Bright, welcoming, full of testimonials and FAQs, the kind of thing you'd land on while planning a trip. And then, somewhere on it, the truth, exactly where Le Guin places it in the story, halfway through, after you've already fallen for the place.</p>
+    <p>Every visual is hand-coded SVG. The ambient music is generated live in the browser with the Web Audio API, with the chord progression rewriting itself when you find the room. There are no images on this site. There is no library doing the heavy lifting. It is all just HTML, CSS, and JavaScript, the way Omelas itself is just a town.</p>
+
+    <div class="about-meta">
+      <div class="about-meta-item">
+        <div class="about-meta-label">Author</div>
+        <div class="about-meta-value">Peyton F.</div>
+      </div>
+      <div class="about-meta-item">
+        <div class="about-meta-label">Course</div>
+        <div class="about-meta-value">ENGWR 301 <em>&middot; English Composition</em></div>
+      </div>
+      <div class="about-meta-item">
+        <div class="about-meta-label">Source Text</div>
+        <div class="about-meta-value"><em>The Ones Who Walk Away<br>from Omelas</em>, U. K. Le Guin</div>
+      </div>
+      <div class="about-meta-item">
+        <div class="about-meta-label">Built With</div>
+        <div class="about-meta-value">HTML, CSS, JS <em>&middot; no frameworks</em></div>
+      </div>
+    </div>
+
+    <div class="about-links">
+      <a class="about-link" href="https://github.com/Peyton-F" target="_blank" rel="noopener noreferrer">
+        <span class="about-link-text">
+          <span class="about-link-label">GitHub</span>
+          <span class="about-link-value">github.com/Peyton-F</span>
+        </span>
+        <span class="about-link-arrow">→</span>
+      </a>
+      <a class="about-link" href="https://peyton-f.github.io/About-Me/" target="_blank" rel="noopener noreferrer">
+        <span class="about-link-text">
+          <span class="about-link-label">Personal Site</span>
+          <span class="about-link-value">peyton-f.github.io/About-Me</span>
+        </span>
+        <span class="about-link-arrow">→</span>
+      </a>
+    </div>
+
+    <div class="about-credit">
+      A creative adaptation of <em>"The Ones Who Walk Away from Omelas"</em> by Ursula K. Le Guin.<br>
+      Submitted for ENGWR 301. All original prose on this site is my own; the story it interprets is hers.
+    </div>
+  </div>
+</div>
 
 <div class="hidden-page" id="hiddenPage">
   <div class="room">
@@ -1327,7 +1597,7 @@
     <p>The road goes through the orchards, and then through the fields, and then into country that is not the city's. The light dims. The bells, when they sound at sundown, are far behind you and do not reach where you are.</p>
     <p>You do not know where you are going. The people who walk away from Omelas never seem to know. Only that they cannot stay, having seen, and so they go on, into the dark.</p>
     <p>It is your turn now to close the tab.</p>
-    <div class="credit">a creative adaptation of "the ones who walk away from omelas" by ursula k. le guin &middot; engwr 301</div>
+    <div class="credit">a creative adaptation of "the ones who walk away from omelas" by ursula k. le guin &middot; by peyton f. &middot; engwr 301</div>
   </div>
 </div>
 
@@ -1471,6 +1741,23 @@
     wa.classList.add('active');
     document.documentElement.style.overflow = 'hidden';
     try { window.close(); } catch (e) {}
+  }
+
+  function enterAbout() {
+    const ap = document.getElementById('aboutPage');
+    if (!ap) return;
+    ap.classList.add('active');
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => { ap.scrollTop = 0; }, 0);
+  }
+
+  function exitAbout() {
+    const ap = document.getElementById('aboutPage');
+    if (!ap) return;
+    ap.classList.remove('active');
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
   }
 
   // ---- Audio engine: morphable light/dark ambient ----
@@ -1891,8 +2178,19 @@
     else startAudio();
   }
 
+  // ESC closes the about page
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const ap = document.getElementById('aboutPage');
+      if (ap && ap.classList.contains('active')) exitAbout();
+    }
+  });
+
   if (['#truth', '#child', '#basement'].includes(window.location.hash)) {
     setTimeout(() => enterHidden('hash'), 800);
+  }
+  if (['#about-me', '#cartographer', '#peyton'].includes(window.location.hash)) {
+    setTimeout(() => enterAbout(), 400);
   }
 
   if (document.readyState === 'loading') {
