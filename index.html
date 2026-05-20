@@ -807,6 +807,43 @@
     font-style: normal;
   }
 
+  /* "close the tab" inline button — styled to read as natural prose
+     but reveal its clickability on hover. The italic and color match
+     the surrounding paragraph; the dotted underline is the only
+     resting indicator that it's interactive. */
+  .close-link {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-style: italic;
+    border-bottom: 1px dotted currentColor;
+    transition: color 0.5s var(--ease),
+                letter-spacing 0.5s var(--ease),
+                border-color 0.5s var(--ease);
+  }
+  .close-link:hover {
+    color: #d4c098;
+    letter-spacing: 0.03em;
+    border-bottom-color: #d4c098;
+  }
+  .close-link:active { color: #fdf6e8; }
+  .close-link:focus-visible {
+    outline: 1px solid #d4c098;
+    outline-offset: 4px;
+    border-radius: 2px;
+  }
+  /* When the close attempt is blocked by the browser, the button morphs
+     into a final, quieter line of text — no longer clickable. */
+  .close-link.blocked {
+    cursor: default;
+    border-bottom-color: transparent;
+    color: #5a5141;
+    pointer-events: none;
+  }
+
   /* ABOUT-ME PAGE */
   .about-page {
     position: fixed;
@@ -1047,6 +1084,250 @@
     }
     .audio-toggle { width: 50px; height: 50px; font-size: 1.25rem; }
   }
+
+  /* ============================================================
+     PAGE TRANSITION & ATMOSPHERIC ANIMATION LAYER
+     Added in the final polish pass to make state changes feel
+     intentional. The room transition is deliberately heavier than
+     the about-page transition — the room earns its weight.
+     ============================================================ */
+
+  /* Initial page-load curtain — page rises into view as the body
+     wakes up. Removed via .loaded class after first paint. */
+  body {
+    opacity: 0;
+    transition: opacity 1.4s var(--ease);
+  }
+  body.loaded { opacity: 1; }
+
+  /* Parallax helpers: hero art layers track scroll position via a CSS
+     custom property set by JS. We avoid `top`/`transform` thrashing
+     by binding to translate3d only. */
+  .hero-sun     { will-change: transform; transform: translate3d(0, calc(var(--scroll-y, 0) * 0.18px), 0); }
+  .hero-mountain { will-change: transform; transform: translate3d(0, calc(var(--scroll-y, 0) * 0.08px), 0); }
+  .hero-meadow   { will-change: transform; transform: translate3d(0, calc(var(--scroll-y, 0) * 0.04px), 0); }
+  .hero-content  { transform: translate3d(0, calc(var(--scroll-y, 0) * -0.05px), 0); }
+
+  /* Cursor-following warmth: a soft golden glow that follows the
+     pointer on the hero. Positioned via CSS custom properties set
+     by a mousemove handler. Invisible when pointer leaves. */
+  .hero-glow {
+    position: absolute;
+    pointer-events: none;
+    width: 600px; height: 600px;
+    left: calc(var(--mouse-x, 50%) - 300px);
+    top:  calc(var(--mouse-y, 50%) - 300px);
+    background: radial-gradient(circle, rgba(254, 240, 196, 0.22) 0%, rgba(240, 196, 116, 0.08) 35%, transparent 65%);
+    opacity: 0;
+    transition: opacity 0.8s var(--ease), left 0.4s var(--ease), top 0.4s var(--ease);
+    z-index: 1;
+    mix-blend-mode: screen;
+  }
+  .hero:hover .hero-glow { opacity: 1; }
+
+  /* Gentle floating animations on gallery items and feature cards.
+     Each gets a unique phase via nth-child so they don't move in sync. */
+  .gallery-item {
+    animation: floatSoft 14s ease-in-out infinite;
+  }
+  .gallery-item:nth-child(2) { animation-delay: -3s; animation-duration: 16s; }
+  .gallery-item:nth-child(3) { animation-delay: -6s; animation-duration: 12s; }
+  .gallery-item:nth-child(4) { animation-delay: -9s; animation-duration: 18s; }
+  .gallery-item:nth-child(5) { animation-delay: -2s; animation-duration: 15s; }
+  @keyframes floatSoft {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50%      { transform: translate3d(0, -10px, 0); }
+  }
+  .gallery-item:hover {
+    animation-play-state: paused;
+  }
+
+  /* Feature cards drift in subtle counter-rhythm */
+  .feature {
+    animation: featureBreath 18s ease-in-out infinite;
+  }
+  .feature:nth-child(2) { animation-delay: -4s; }
+  .feature:nth-child(3) { animation-delay: -8s; }
+  .feature:nth-child(4) { animation-delay: -12s; animation-duration: 20s; }
+  .feature:nth-child(5) { animation-delay: -2s;  animation-duration: 22s; }
+  .feature:nth-child(6) { animation-delay: -10s; animation-duration: 19s; }
+  @keyframes featureBreath {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50%      { transform: translate3d(0, -6px, 0); }
+  }
+  .feature:hover { animation-play-state: paused; }
+
+  /* Nav appearance on scroll — slide-in feel */
+  .nav {
+    transform: translateY(0);
+    transition: padding 0.4s var(--ease), background 0.4s var(--ease),
+                transform 0.5s var(--ease), box-shadow 0.5s var(--ease);
+  }
+  .nav.scrolled {
+    box-shadow: 0 4px 24px -12px rgba(40, 32, 26, 0.15);
+  }
+
+  /* Section entry — a slow shimmer-bar that draws across as you enter */
+  section {
+    position: relative;
+    overflow: visible;
+  }
+  section.reveal-shimmer::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--sun) 50%, transparent);
+    transform: scaleX(0);
+    transform-origin: center;
+    opacity: 0;
+    transition: transform 1.6s var(--ease), opacity 1.6s var(--ease);
+  }
+  section.reveal-shimmer.in::before {
+    transform: scaleX(1);
+    opacity: 0.6;
+  }
+
+  /* ===================== ABOUT PAGE: light, fluid ===================== */
+  /* Already has its own opacity transition. Add a scale-up + sun bloom. */
+  .about-page {
+    transform: scale(0.985);
+    transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .about-page.active {
+    transform: scale(1);
+  }
+  /* Stagger children fading in */
+  .about-page .about-page-inner > * {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+  }
+  .about-page.active .about-page-inner > *:nth-child(1) { transition-delay: 0.25s; opacity: 1; transform: translateY(0); }
+  .about-page.active .about-page-inner > *:nth-child(2) { transition-delay: 0.35s; opacity: 1; transform: translateY(0); }
+  .about-page.active .about-page-inner > *:nth-child(3) { transition-delay: 0.45s; opacity: 1; transform: translateY(0); }
+  .about-page.active .about-page-inner > *:nth-child(4) { transition-delay: 0.55s; opacity: 1; transform: translateY(0); }
+  .about-page.active .about-page-inner > *:nth-child(5) { transition-delay: 0.65s; opacity: 1; transform: translateY(0); }
+  .about-page.active .about-page-inner > *:nth-child(6) { transition-delay: 0.75s; opacity: 1; transform: translateY(0); }
+  .about-page.active .about-page-inner > *:nth-child(7) { transition-delay: 0.85s; opacity: 1; transform: translateY(0); }
+  .about-page.active .about-page-inner > *:nth-child(8) { transition-delay: 0.95s; opacity: 1; transform: translateY(0); }
+  .about-page.active .about-page-inner > *:nth-child(9) { transition-delay: 1.05s; opacity: 1; transform: translateY(0); }
+  .about-page.active .about-page-inner > *:nth-child(10) { transition-delay: 1.15s; opacity: 1; transform: translateY(0); }
+  .about-page.active .about-page-inner > *:nth-child(n+11) { transition-delay: 1.25s; opacity: 1; transform: translateY(0); }
+
+  /* ===================== HIDDEN ROOM: heavy, deliberate ===================== */
+  /* Slower fade with a downward weight — feels like descending. The
+     ::before is a closing vignette that meets at the center. */
+  .hidden-page {
+    transform: scale(1.02);
+    transition: opacity 1.6s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 1.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .hidden-page.active {
+    transform: scale(1);
+    transition: opacity 1.4s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hidden-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.6) 95%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 2s var(--ease);
+    z-index: 1;
+  }
+  .hidden-page.active::before { opacity: 1; }
+
+  /* Room content staged in — slower than about, more reluctant.
+     Each line should feel earned, not delivered. */
+  .room > * {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 1.2s var(--ease), transform 1.2s var(--ease);
+  }
+  .hidden-page.active .room > *:nth-child(1) { transition-delay: 0.4s; }
+  .hidden-page.active .room > *:nth-child(2) { transition-delay: 0.9s; }
+  .hidden-page.active .room > *:nth-child(3) { transition-delay: 1.5s; }
+  .hidden-page.active .room > *:nth-child(4) { transition-delay: 2.1s; }
+  .hidden-page.active .room > *:nth-child(5) { transition-delay: 2.7s; }
+  .hidden-page.active .room > *:nth-child(6) { transition-delay: 3.3s; }
+  .hidden-page.active .room > *:nth-child(7) { transition-delay: 3.9s; }
+  .hidden-page.active .room > *:nth-child(8) { transition-delay: 4.5s; }
+  .hidden-page.active .room > *:nth-child(9) { transition-delay: 5.1s; }
+  .hidden-page.active .room > *:nth-child(10) { transition-delay: 5.7s; }
+  /* Every room child reveals at full opacity once .active is on; the
+     delays above stagger the timing. Anything past child 10 falls
+     through to the final 5.7s delay. */
+  .hidden-page.active .room > * {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* The choice buttons need committed-feel hovers (heavier than the
+     light page's snappy hovers) */
+  .choice {
+    transition: border-color 0.6s var(--ease),
+                background 0.6s var(--ease),
+                transform 0.6s var(--ease),
+                box-shadow 0.6s var(--ease);
+  }
+  .choice:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 36px -20px rgba(0, 0, 0, 0.6);
+  }
+  .choice:active { transform: translateY(0); transition-duration: 0.15s; }
+
+  /* ===================== WALKAWAY: footsteps cadence ===================== */
+  /* Each paragraph fades in slowly, with a longer pause between, like
+     steps fading into distance. */
+  .walkaway-content > * {
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 1.6s var(--ease), transform 1.6s var(--ease);
+  }
+  .walkaway.active .walkaway-content > *:nth-child(1) { transition-delay: 0.6s; }
+  .walkaway.active .walkaway-content > *:nth-child(2) { transition-delay: 2.0s; }
+  .walkaway.active .walkaway-content > *:nth-child(3) { transition-delay: 3.6s; }
+  .walkaway.active .walkaway-content > *:nth-child(4) { transition-delay: 5.4s; }
+  .walkaway.active .walkaway-content > *:nth-child(5) { transition-delay: 7.4s; }
+  .walkaway.active .walkaway-content > * {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Return banner gets a heavier entry — it's a meaningful state change */
+  .return-banner {
+    transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 1.2s var(--ease);
+    opacity: 0;
+  }
+  .return-banner.active { opacity: 1; }
+
+  /* Anchor scroll smoothness for in-page nav */
+  html { scroll-behavior: smooth; }
+
+  /* Honor users who ask for less motion: kill drift, parallax, ambient
+     animations. Page transitions stay, but at instant speed. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    .hero-sun, .hero-mountain, .hero-meadow, .hero-content {
+      transform: none !important;
+    }
+    .blob, .mote, .hero-sun {
+      animation: none !important;
+    }
+    .gallery-item, .feature {
+      animation: none !important;
+    }
+  }
 </style>
 </head>
 <body>
@@ -1081,6 +1362,7 @@
     <div class="hero-horizon"></div>
     <div class="hero-mountain"></div>
     <div class="hero-meadow"></div>
+    <div class="hero-glow"></div>
     <div class="mote"></div><div class="mote"></div><div class="mote"></div><div class="mote"></div><div class="mote"></div>
     <div class="mote"></div><div class="mote"></div><div class="mote"></div><div class="mote"></div><div class="mote"></div>
   </div>
@@ -1694,7 +1976,7 @@
     <p>You leave Omelas. You walk out of the gates and you keep walking.</p>
     <p>The road goes through the orchards, and then through the fields, and then into country that is not the city's. The light dims. The bells, when they sound at sundown, are far behind you and do not reach where you are.</p>
     <p>You do not know where you are going. The people who walk away from Omelas never seem to know. Only that they cannot stay, having seen, and so they go on, into the dark.</p>
-    <p>It is your turn now to close the tab.</p>
+    <p>It is your turn now to <button class="close-link" onclick="closeFromWalkaway(this)">close the tab</button>.</p>
     <div class="credit">a creative adaptation of "the ones who walk away from omelas" by ursula k. le guin &middot; by peyton f. &middot; engwr 301</div>
   </div>
 </div>
@@ -1850,12 +2132,16 @@
     state.walkedAway = true;
     saveState();
     const hp = document.getElementById('hiddenPage');
+    const wa = document.getElementById('walkaway');
+    // Show the walkaway page IMMEDIATELY on top of the room.  The walkaway
+    // has a higher z-index, so it covers the room while the room fades out
+    // beneath it. If we removed the room first and showed walkaway later,
+    // the user would see the home page flash through during the fade.
+    wa.classList.add('active');
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    // Now safely fade out the room behind the walkaway.
     hp.classList.remove('active');
-    setTimeout(() => {
-      const wa = document.getElementById('walkaway');
-      wa.classList.add('active');
-      document.documentElement.style.overflow = 'hidden';
-    }, 800);
   }
 
   function dismissReturn() {
@@ -1869,6 +2155,31 @@
     wa.classList.add('active');
     document.documentElement.style.overflow = 'hidden';
     try { window.close(); } catch (e) {}
+  }
+
+  // Called from the "close the tab" inline button on the walkaway page.
+  // Tries to force-close the window. Browsers block window.close() on
+  // tabs the script didn't open, so if we're still here ~200ms later,
+  // we replace the button with a quieter final line acknowledging it.
+  function closeFromWalkaway(btn) {
+    // Two approaches in order of likelihood:
+    // 1) Direct window.close()
+    // 2) window.open('', '_self') trick (lets us reassign window
+    //    so close works in some older setups).
+    // We deliberately do NOT navigate away as a fallback — that
+    // would clobber the walkaway page itself, which is the very
+    // thing we want the user to leave from on their own terms.
+    try { window.close(); } catch (e) {}
+    try { window.open('', '_self'); window.close(); } catch (e) {}
+
+    // If we're still here 200ms later, the browser blocked it.
+    // Replace the button with a final, un-clickable line.
+    setTimeout(() => {
+      if (!btn || !document.body.contains(btn)) return;
+      btn.classList.add('blocked');
+      btn.textContent = 'close the tab yourself, then';
+      btn.setAttribute('aria-disabled', 'true');
+    }, 200);
   }
 
   function enterAbout() {
@@ -1892,46 +2203,87 @@
   let audioCtx = null, audioPlaying = false;
   let audioMode = 'light';
   let masterGain = null;
-  let padNodes = [];      // sustained pad oscillators (retuned on mode change)
+  let padNodes = [];      // sustained pad voices (each: {oscs, voiceGain, panner, filter, lfo})
+  let padFilterLFO = null; // shared LFO that sweeps every pad voice's filter
+  let padFilterLFOGain = null;
   let melodyGain = null;  // gain bus for plucked melody (faded out in dark)
   let harmonyGain = null; // soft countermelody layer for light mode
   let shimmerGain = null; // bright bell layer for light mode
   let droneGain = null;   // gain bus for dark drone + noise (faded in in dark)
   let noiseGain = null;   // brown-noise rumble layer (only audible in dark)
   let droneNodes = [];
+  let reverbNode = null;  // convolution reverb (large warm hall)
+  let reverbSend = null;  // gain into the reverb (so we can control wet level)
   let melodyTimer = null;
   let arpeggioTimer = null;
   let droneTimer = null;
+  let chordTimer = null;  // schedules slow chord changes
+  let chordIdx = 0;       // which CHORDS_LIGHT/DARK entry the pad is on
   let audioUnlockBound = false;
 
-  // Light-mode pad notes (D major add6: D4, F#4, A4, B4) and dark-mode equivalents
-  // (D minor with a flat second: D3, F3, A3, Eb4). The shared root lets the
-  // hidden-page transition feel like the same song turning bleak.
-  const PAD_LIGHT = [293.66, 369.99, 440.00, 493.88];
-  const PAD_DARK  = [146.83, 174.61, 220.00, 311.13];
-  const PAD_LIGHT_GAINS = [0.018, 0.014, 0.012, 0.01];
-  const PAD_DARK_GAINS = [0, 0, 0, 0];
-  const LIGHT_ARPEGGIO = [293.66, 369.99, 440.00, 493.88, 587.33, 493.88, 440.00, 369.99];
-
-  // Sparse, piano-like phrase fragments inspired by Minecraft's gentle pauses.
-  const LIGHT_PHRASES = [
-    [
-      [440.00, 0.00, 2.8, 293.66],
-      [493.88, 2.90, 2.2, null],
-      [587.33, 6.10, 3.4, 369.99]
-    ],
-    [
-      [587.33, 0.00, 2.4, 369.99],
-      [739.99, 3.25, 1.9, null],
-      [659.25, 5.95, 2.5, 440.00],
-      [493.88, 9.10, 3.0, 293.66]
-    ],
-    [
-      [369.99, 0.00, 3.2, 293.66],
-      [440.00, 4.40, 2.4, null],
-      [587.33, 7.35, 3.0, 369.99]
-    ]
+  // ----- Harmonic data ----------------------------------------------------
+  // The pad slowly rotates through these three chords (~36s each). Each chord
+  // has a parallel "dark" voicing one octave lower with bleaker intervals,
+  // letting the same machinery serve both modes.
+  //
+  // Light: D add9, B minor 7, G maj7  (a gentle ascending-then-falling drift
+  // in the key of D, all tones drawn from the D major pentatonic palette).
+  // Dark equivalents: D minor add b9, Bb maj7, G minor 7  (same shape,
+  // bleaker color).
+  const CHORDS_LIGHT = [
+    [146.83, 220.00, 293.66, 369.99, 493.88], // D3 A3 D4 F#4 B4   (D add9)
+    [123.47, 185.00, 246.94, 293.66, 440.00], // B2 F#3 B3 D4 A4   (Bm7)
+    [98.00,  196.00, 246.94, 293.66, 440.00]  // G2 G3  B3 D4 A4   (Gmaj7-ish)
   ];
+  const CHORDS_DARK = [
+    [73.42, 110.00, 146.83, 174.61, 311.13],  // D2 A2 D3 F3 Eb4   (Dm add b9)
+    [58.27, 87.31, 116.54, 138.59, 207.65],   // Bb1 F2 Bb2 Db3 Ab3 (Bbmaj7-ish)
+    [49.00, 98.00,  116.54, 146.83, 220.00]   // G1 G2  Bb2 D3 A3   (Gm7)
+  ];
+  // Per-voice gain for the 5 pad voices (bass loudest, top voice softest).
+  const PAD_LIGHT_GAINS = [0.024, 0.018, 0.016, 0.013, 0.010];
+  const PAD_DARK_GAINS  = [0, 0, 0, 0, 0];     // Pad silenced in dark; drone takes over.
+
+  // Melody notes drawn from D major pentatonic across two octaves.
+  // The scheduler picks notes from the current chord plus neighbors so phrases
+  // are always consonant with whatever the pad is doing.
+  const PENTATONIC = [
+    293.66, 329.63, 369.99, 440.00, 493.88,   // D4 E4 F#4 A4 B4
+    587.33, 659.25, 739.99, 880.00, 987.77    // D5 E5 F#5 A5 B5
+  ];
+  // Which pentatonic indices are "safe" for each chord (consonant tones).
+  // Indexes into PENTATONIC above.
+  const CHORD_TONES = [
+    [0, 2, 4, 5, 7, 9],  // D add9: D F# B + octaves
+    [4, 0, 2, 9, 5, 7],  // Bm7:    B D F# A + octaves
+    [2, 4, 0, 7, 9, 5]   // Gmaj7:  B D G(no perfect G in scale, lean on neighbors)
+  ];
+  // Pad legacy aliases kept so other code that references them doesn't break.
+  const PAD_LIGHT = CHORDS_LIGHT[0];
+  const PAD_DARK  = CHORDS_DARK[0];
+
+  // Procedurally generate a smooth, warm reverb impulse response.
+  // Two stereo channels of exponentially decaying noise filtered toward the
+  // mids gives a cathedral-ish wash without needing an external audio file.
+  function makeReverbImpulse(seconds = 3.4, decay = 2.6) {
+    const sr = audioCtx.sampleRate;
+    const len = Math.floor(sr * seconds);
+    const buf = audioCtx.createBuffer(2, len, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buf.getChannelData(ch);
+      // Slight per-channel offset gives natural stereo width to the tail.
+      const offset = ch * 11;
+      let lp = 0;
+      for (let i = 0; i < len; i++) {
+        const env = Math.pow(1 - i / len, decay);
+        // Smooth the noise with a one-pole lowpass for a softer, warmer tail.
+        const n = (Math.random() * 2 - 1);
+        lp = lp * 0.82 + n * 0.18;
+        data[i] = lp * env * (ch === 0 ? 1 : 0.92) * Math.sin((i + offset) * 0.0007);
+      }
+    }
+    return buf;
+  }
 
   function startAudio() {
     if (audioPlaying) return;
@@ -1939,58 +2291,111 @@
     catch (e) { return; }
     if (audioCtx.resume) audioCtx.resume().catch(() => {});
 
+    const t0 = audioCtx.currentTime;
+
     masterGain = audioCtx.createGain();
-    masterGain.gain.value = 5;
-    masterGain.gain.linearRampToValueAtTime(0.42, audioCtx.currentTime + 3);
+    masterGain.gain.value = 0;
+    masterGain.gain.linearRampToValueAtTime(0.42, t0 + 3);
     masterGain.connect(audioCtx.destination);
 
-    // Soft chord bed plus moving arpeggios keep the happy page full without one loud held note.
-    PAD_LIGHT.forEach((f, i) => {
-      const osc1 = audioCtx.createOscillator();
-      const osc2 = audioCtx.createOscillator();
-      osc1.type = 'sine';
-      osc2.type = 'sine';
+    // Reverb: dry signal goes straight to master, wet path goes through the
+    // convolver and back into master at a controllable send level.
+    reverbNode = audioCtx.createConvolver();
+    reverbNode.buffer = makeReverbImpulse(3.6, 2.4);
+    reverbSend = audioCtx.createGain();
+    reverbSend.gain.value = 0.55; // a generous wash for ambient material
+    reverbNode.connect(reverbSend);
+    reverbSend.connect(masterGain);
+
+    // Shared filter LFO: one slow sine drives a Hz offset on each pad voice's
+    // lowpass cutoff, so the whole pad breathes brighter and darker together.
+    padFilterLFO = audioCtx.createOscillator();
+    padFilterLFO.type = 'sine';
+    padFilterLFO.frequency.value = 0.045; // ~22 second cycle
+    padFilterLFOGain = audioCtx.createGain();
+    padFilterLFOGain.gain.value = 380; // sweep range in Hz around the cutoff
+    padFilterLFO.connect(padFilterLFOGain);
+    padFilterLFO.start();
+
+    // ----- Pad voices -----------------------------------------------------
+    // Each voice = three sine oscillators (fundamental + 2nd + slight 3rd
+    // partial) into a lowpass, then a stereo panner, then voiceGain.
+    // The fundamental gets a slow detune LFO for chorus-like motion, and
+    // each voice gets a different pan position for stereo width.
+    const startChord = CHORDS_LIGHT[0];
+    startChord.forEach((f, i) => {
+      const osc1 = audioCtx.createOscillator(); // fundamental
+      const osc2 = audioCtx.createOscillator(); // octave up, quieter
+      const osc3 = audioCtx.createOscillator(); // 5th partial, very quiet shimmer
+      osc1.type = 'sine'; osc2.type = 'sine'; osc3.type = 'sine';
       osc1.frequency.value = f;
       osc2.frequency.value = f * 2;
+      osc3.frequency.value = f * 3.01; // slight inharmonicity for life
+
+      const mix2 = audioCtx.createGain(); mix2.gain.value = 0.18;
+      const mix3 = audioCtx.createGain(); mix3.gain.value = 0.045;
+
+      // Slow detune LFO per voice (different rate so they don't sync)
+      const lfo = audioCtx.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.value = 0.07 + i * 0.025;
+      const lfoGain = audioCtx.createGain();
+      lfoGain.gain.value = 2.5; // cents
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc1.detune);
+
+      // Per-voice lowpass with the shared LFO modulating cutoff
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      // Higher voices = brighter base cutoff so the chord sits in a balanced spectrum
+      filter.frequency.value = 700 + i * 280;
+      filter.Q.value = 0.6;
+      padFilterLFOGain.connect(filter.frequency);
+
+      // Stereo panner: spread voices left-to-right across the soundstage
+      const panner = audioCtx.createStereoPanner();
+      // Bass slightly left, top slightly right, evenly distributed
+      panner.pan.value = -0.55 + (i / (startChord.length - 1)) * 1.1;
 
       const voiceGain = audioCtx.createGain();
       voiceGain.gain.value = PAD_LIGHT_GAINS[i];
 
-      // Slow LFO for breathing detune
-      const lfo = audioCtx.createOscillator();
-      lfo.type = 'sine';
-      lfo.frequency.value = 0.08 + i * 0.03;
-      const lfoGain = audioCtx.createGain();
-      lfoGain.gain.value = 1.4;
-      lfo.connect(lfoGain);
-      lfoGain.connect(osc1.detune);
-
-      osc1.connect(voiceGain);
+      osc1.connect(filter);
+      osc2.connect(mix2); mix2.connect(filter);
+      osc3.connect(mix3); mix3.connect(filter);
+      filter.connect(panner);
+      panner.connect(voiceGain);
       voiceGain.connect(masterGain);
-      osc1.start(); osc2.start(); lfo.start();
-      padNodes.push({ osc1, osc2, lfo, lfoGain, voiceGain });
+      voiceGain.connect(reverbNode); // pad bleeds into reverb too
+
+      osc1.start(); osc2.start(); osc3.start(); lfo.start();
+      padNodes.push({ osc1, osc2, osc3, lfo, lfoGain, voiceGain, panner, filter });
     });
 
-    // Layered light-mode buses.
+    // Layered light-mode buses.  Each also feeds reverbNode for spatial wash.
     melodyGain = audioCtx.createGain();
     melodyGain.gain.value = 0.0;
-    melodyGain.gain.linearRampToValueAtTime(0.28, audioCtx.currentTime + 4);
+    melodyGain.gain.linearRampToValueAtTime(0.28, t0 + 4);
     melodyGain.connect(masterGain);
+    melodyGain.connect(reverbNode);
 
     harmonyGain = audioCtx.createGain();
     harmonyGain.gain.value = 0.0;
-    harmonyGain.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 5);
+    harmonyGain.gain.linearRampToValueAtTime(0.15, t0 + 5);
     harmonyGain.connect(masterGain);
+    harmonyGain.connect(reverbNode);
 
     shimmerGain = audioCtx.createGain();
     shimmerGain.gain.value = 0.0;
-    shimmerGain.gain.linearRampToValueAtTime(0.07, audioCtx.currentTime + 6);
+    shimmerGain.gain.linearRampToValueAtTime(0.07, t0 + 6);
     shimmerGain.connect(masterGain);
+    shimmerGain.connect(reverbNode);
 
-    // Drone bus (dark mode only audible)
+    // Drone bus (dark mode only audible).  Drone also feeds reverb.
     droneGain = audioCtx.createGain();
     droneGain.gain.value = 0.0;
     droneGain.connect(masterGain);
+    droneGain.connect(reverbNode);
 
     // Dark-mode bus sources stay silent until short, scheduled accents use them.
     setupDroneLayer();
@@ -2002,6 +2407,7 @@
     scheduleMelody();
     scheduleArpeggio();
     scheduleDroneEvents();
+    scheduleChordChange();
 
     document.getElementById('audioToggle').classList.add('on');
     bindAudioUnlock();
@@ -2077,46 +2483,99 @@
     droneNodes.push(noise);
   }
 
-  // Plays a single plucked note on the melody bus
-  function playMelodyNote(freq, when, durSec, destination = melodyGain, type = 'sine', peak = 0.7) {
+  // Plays a single plucked melody note.  Richer than a plain sine:
+  // - Fundamental + 2nd harmonic + 3rd harmonic (gently mixed) for a
+  //   piano-ish overtone series.
+  // - Soft attack transient via slight pitch bend down into the note.
+  // - Per-note stereo pan (passed in) so phrases drift across the field.
+  function playMelodyNote(freq, when, durSec, destination = melodyGain, peak = 0.7, pan = 0) {
     if (!audioCtx) return;
-    const osc = audioCtx.createOscillator();
-    osc.type = type;
-    osc.frequency.value = freq;
+    const oscF = audioCtx.createOscillator();
+    const osc2 = audioCtx.createOscillator(); // 2nd harmonic
+    const osc3 = audioCtx.createOscillator(); // 3rd harmonic (very quiet)
+    oscF.type = 'sine'; osc2.type = 'sine'; osc3.type = 'sine';
+
+    // Tiny pitch slide down to the target pitch (~25 cents) creates a soft
+    // "pluck" feel without sounding like vibrato.
+    const detuneStart = 20;
+    oscF.frequency.setValueAtTime(freq, when);
+    oscF.detune.setValueAtTime(detuneStart, when);
+    oscF.detune.linearRampToValueAtTime(0, when + 0.18);
+    osc2.frequency.setValueAtTime(freq * 2, when);
+    osc3.frequency.setValueAtTime(freq * 3.01, when); // slight inharmonicity
+
+    const mix2 = audioCtx.createGain(); mix2.gain.value = 0.28;
+    const mix3 = audioCtx.createGain(); mix3.gain.value = 0.09;
+
+    // Lowpass darkens the harmonics as the note decays — like a struck string
+    // losing its high end as it fades.
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(Math.min(freq * 6 + 1200, 7000), when);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(freq * 2, 400), when + durSec);
+    filter.Q.value = 0.7;
+
     const g = audioCtx.createGain();
     g.gain.setValueAtTime(0, when);
-    g.gain.linearRampToValueAtTime(peak, when + 0.10);
+    g.gain.linearRampToValueAtTime(peak, when + 0.045);
     g.gain.exponentialRampToValueAtTime(0.001, when + durSec);
-    osc.connect(g);
-    g.connect(destination);
-    osc.start(when);
-    osc.stop(when + durSec + 0.05);
+
+    const panner = audioCtx.createStereoPanner();
+    panner.pan.value = pan;
+
+    oscF.connect(filter);
+    osc2.connect(mix2); mix2.connect(filter);
+    osc3.connect(mix3); mix3.connect(filter);
+    filter.connect(g);
+    g.connect(panner);
+    panner.connect(destination);
+
+    oscF.start(when); osc2.start(when); osc3.start(when);
+    const stopAt = when + durSec + 0.1;
+    oscF.stop(stopAt); osc2.stop(stopAt); osc3.stop(stopAt);
   }
 
-  function playBell(freq, when, durSec) {
+  // Bell: longer, more inharmonic, brighter top end.
+  // Uses two inharmonic partials (2.756 and 5.404 are classic bell ratios)
+  // plus the fundamental — gives the characteristic shimmery bell ring.
+  function playBell(freq, when, durSec, pan = 0) {
     if (!audioCtx) return;
-    const osc = audioCtx.createOscillator();
-    const overtone = audioCtx.createOscillator();
-    osc.type = 'sine';
-    overtone.type = 'sine';
-    osc.frequency.value = freq;
-    overtone.frequency.value = freq * 2.01;
+    const oscs = [];
+    const ratios = [1, 2.0, 2.756, 5.404];
+    const levels = [0.55, 0.32, 0.20, 0.10];
+    const types  = ['sine', 'sine', 'sine', 'sine'];
+
     const g = audioCtx.createGain();
     g.gain.setValueAtTime(0, when);
-    g.gain.linearRampToValueAtTime(0.18, when + 0.02);
+    g.gain.linearRampToValueAtTime(0.22, when + 0.012);
     g.gain.exponentialRampToValueAtTime(0.001, when + durSec);
-    osc.connect(g);
-    overtone.connect(g);
-    g.connect(shimmerGain);
-    osc.start(when);
-    overtone.start(when);
-    osc.stop(when + durSec + 0.05);
-    overtone.stop(when + durSec + 0.05);
+
+    const panner = audioCtx.createStereoPanner();
+    panner.pan.value = pan;
+
+    ratios.forEach((r, i) => {
+      const o = audioCtx.createOscillator();
+      o.type = types[i];
+      o.frequency.value = freq * r;
+      const partialGain = audioCtx.createGain();
+      partialGain.gain.value = levels[i];
+      o.connect(partialGain);
+      partialGain.connect(g);
+      o.start(when);
+      o.stop(when + durSec + 0.1);
+      oscs.push(o);
+    });
+
+    g.connect(panner);
+    panner.connect(shimmerGain);
   }
 
-  // Plays a dissonant cluster for the dark mode "events"
+  // Plays a dissonant cluster for the dark mode "events".  Each partial is
+  // panned to a different position so the cluster spreads across the field
+  // and the dissonance feels three-dimensional, not stacked on top of itself.
   function playDarkAccent(when) {
     if (!audioCtx) return;
+    const lowPans = [-0.4, 0.45, 0.0];
     [73.42, 77.78, 110.00].forEach((f, i) => {
       const osc = audioCtx.createOscillator();
       osc.type = i === 2 ? 'sine' : 'triangle';
@@ -2125,8 +2584,11 @@
       g.gain.setValueAtTime(0, when);
       g.gain.linearRampToValueAtTime(i === 0 ? 0.32 : 0.20, when + 0.9);
       g.gain.exponentialRampToValueAtTime(0.001, when + 5.8);
+      const panner = audioCtx.createStereoPanner();
+      panner.pan.value = lowPans[i];
       osc.connect(g);
-      g.connect(droneGain);
+      g.connect(panner);
+      panner.connect(droneGain);
       osc.start(when);
       osc.stop(when + 5.9);
     });
@@ -2138,51 +2600,140 @@
       g.gain.setValueAtTime(0, when + 1.1 + i * 0.35);
       g.gain.linearRampToValueAtTime(0.13, when + 1.7 + i * 0.35);
       g.gain.exponentialRampToValueAtTime(0.001, when + 4.4 + i * 0.35);
+      const panner = audioCtx.createStereoPanner();
+      panner.pan.value = i === 0 ? -0.55 : 0.55;
       osc.connect(g);
-      g.connect(droneGain);
+      g.connect(panner);
+      panner.connect(droneGain);
       osc.start(when + 1.1 + i * 0.35);
       osc.stop(when + 4.5 + i * 0.35);
     });
   }
 
-  let melodyIdx = 0;
-  let arpIdx = 0;
+  // ----- Generative melody ----------------------------------------------
+  // Instead of cycling through 3 hand-coded phrases, we generate new short
+  // phrases each time, drawing pitches from the current chord's safe tones
+  // in the pentatonic palette. Each phrase has 2-4 notes with varied rhythm
+  // and stereo positioning. Bell-octave drift adds harmonic variety.
+  let phrasePanDirection = 1;
+  function buildPhrase() {
+    const safe = CHORD_TONES[chordIdx];
+    const length = 2 + Math.floor(Math.random() * 3); // 2, 3, or 4 notes
+    const notes = [];
+    let lastIdx = safe[Math.floor(Math.random() * safe.length)];
+    let t = 0;
+    for (let i = 0; i < length; i++) {
+      // Walk: stay close to the last note most of the time, occasionally leap
+      const leap = Math.random() < 0.25;
+      const candidates = leap ? safe : safe.filter(j => Math.abs(j - lastIdx) <= 3);
+      const nextIdx = candidates[Math.floor(Math.random() * candidates.length)];
+      const freq = PENTATONIC[nextIdx];
+      const dur = 2.0 + Math.random() * 2.2;
+      // Slightly varying inter-onset times (rubato), with the first note
+      // beginning at t = 0 and successors falling on quasi-musical spacings.
+      notes.push({ freq, offset: t, dur, idx: nextIdx });
+      t += 0.9 + Math.random() * 1.8;
+      lastIdx = nextIdx;
+    }
+    return notes;
+  }
+
   function scheduleMelody() {
     if (!audioPlaying) return;
-    let nextPhraseDelay = 6000 + Math.random() * 3500;
+    let nextPhraseDelay = 6500 + Math.random() * 4000;
     if (audioMode === 'light' && audioCtx) {
-      const phrase = LIGHT_PHRASES[melodyIdx % LIGHT_PHRASES.length];
+      const phrase = buildPhrase();
       const start = audioCtx.currentTime + 0.08;
-      phrase.forEach(([freq, offset, dur, harmony], noteIdx) => {
-        playMelodyNote(freq, start + offset, dur, melodyGain, 'sine', 0.30);
-        if (harmony) {
-          playMelodyNote(harmony, start + offset + 0.12, dur + 0.9, harmonyGain, 'sine', 0.18);
+      // Each phrase has a stereo "lean" that gradually alternates left/right
+      const basePan = phrasePanDirection * (0.15 + Math.random() * 0.25);
+      phrasePanDirection *= -1;
+
+      phrase.forEach((note, i) => {
+        // Gentle per-note pan jitter around the phrase's base position
+        const pan = Math.max(-0.85, Math.min(0.85, basePan + (Math.random() - 0.5) * 0.3));
+        playMelodyNote(note.freq, start + note.offset, note.dur, melodyGain, 0.30, pan);
+
+        // ~50% chance to add a soft harmony a 3rd or 6th below on a different bus
+        if (Math.random() < 0.5) {
+          const harmonyIdx = Math.max(0, note.idx - (Math.random() < 0.5 ? 2 : 4));
+          const harmonyFreq = PENTATONIC[harmonyIdx];
+          playMelodyNote(harmonyFreq, start + note.offset + 0.13, note.dur + 0.7, harmonyGain, 0.16, -pan * 0.7);
         }
-        if (noteIdx === phrase.length - 1) {
-          playBell(freq * 2, start + offset + 0.32, 2.6);
+
+        // Last note often gets a bell, but at a varied octave — sometimes the
+        // root above, sometimes a 5th up, occasionally a wide octave-and-a-fifth
+        if (i === phrase.length - 1 && Math.random() < 0.75) {
+          const bellChoices = [note.freq * 2, note.freq * 3, note.freq * 4];
+          const bellFreq = bellChoices[Math.floor(Math.random() * bellChoices.length)];
+          playBell(bellFreq, start + note.offset + 0.35, 3.0 + Math.random() * 1.2, pan * 0.6);
         }
       });
-      const lastNote = phrase[phrase.length - 1];
-      nextPhraseDelay = (lastNote[1] + lastNote[2]) * 1000 + 1800 + Math.random() * 3500;
-      melodyIdx++;
+
+      const last = phrase[phrase.length - 1];
+      nextPhraseDelay = (last.offset + last.dur) * 1000 + 1600 + Math.random() * 3200;
     }
     melodyTimer = setTimeout(scheduleMelody, nextPhraseDelay);
   }
 
+  // Arpeggio: a soft 4-note shape pulled from the current chord, panned
+  // gently across the stereo field, occasionally crowned with a high bell.
+  let arpStep = 0;
   function scheduleArpeggio() {
     if (!audioPlaying) return;
     if (audioMode === 'light' && audioCtx) {
+      const chord = CHORDS_LIGHT[chordIdx];
       const start = audioCtx.currentTime + 0.04;
-      for (let i = 0; i < 4; i++) {
-        const freq = LIGHT_ARPEGGIO[(arpIdx + i) % LIGHT_ARPEGGIO.length];
-        playMelodyNote(freq, start + i * 0.36, 1.15, harmonyGain, 'sine', 0.085);
+      // Pick 4 notes from the chord, mostly ascending, occasionally with
+      // a top note pulled an octave up for sparkle.
+      const order = [1, 2, 3, 4]; // skip the bass note (index 0) so the pad keeps its low end
+      const shuffle = Math.random() < 0.3;
+      if (shuffle) order.reverse();
+      for (let i = 0; i < order.length; i++) {
+        const noteIdx = order[i];
+        let freq = chord[noteIdx];
+        if (Math.random() < 0.18) freq *= 2; // occasional octave jump
+        const pan = -0.4 + (i / 3) * 0.8;
+        playMelodyNote(freq, start + i * 0.34, 1.05, harmonyGain, 0.075, pan);
       }
-      if (arpIdx % 4 === 0) {
-        playBell(LIGHT_ARPEGGIO[(arpIdx + 4) % LIGHT_ARPEGGIO.length] * 2, start + 1.08, 1.8);
+      if (arpStep % 5 === 0) {
+        const topFreq = chord[chord.length - 1] * 2;
+        playBell(topFreq, start + 1.1, 2.2, 0.25);
       }
-      arpIdx = (arpIdx + 1) % LIGHT_ARPEGGIO.length;
+      arpStep++;
     }
-    arpeggioTimer = setTimeout(scheduleArpeggio, 2200 + Math.random() * 900);
+    arpeggioTimer = setTimeout(scheduleArpeggio, 2400 + Math.random() * 1100);
+  }
+
+  // Slow chord change. Cycles through the three chords with optional skips
+  // so the progression doesn't feel like a strict 1-2-3 loop.
+  function scheduleChordChange() {
+    if (!audioPlaying) return;
+    if (audioMode === 'light' && audioCtx) {
+      // Don't change on the very first scheduled call (give the listener time
+      // to settle into the opening chord).
+      if (chordTimer !== null) {
+        const advance = Math.random() < 0.7 ? 1 : 2; // mostly step, sometimes skip
+        chordIdx = (chordIdx + advance) % CHORDS_LIGHT.length;
+        retunePadToChord(CHORDS_LIGHT[chordIdx], 6.0);
+      }
+    }
+    // 32-44 second chord changes
+    chordTimer = setTimeout(scheduleChordChange, 32000 + Math.random() * 12000);
+  }
+
+  // Smoothly retune every pad voice to a new chord over `fadeT` seconds.
+  function retunePadToChord(chord, fadeT) {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    padNodes.forEach((v, i) => {
+      const f = chord[i] || chord[chord.length - 1];
+      [v.osc1, v.osc2, v.osc3].forEach((osc, ratIdx) => {
+        const ratio = ratIdx === 0 ? 1 : ratIdx === 1 ? 2 : 3.01;
+        osc.frequency.cancelScheduledValues(now);
+        osc.frequency.setValueAtTime(osc.frequency.value, now);
+        osc.frequency.linearRampToValueAtTime(f * ratio, now + fadeT);
+      });
+    });
   }
 
   function scheduleDroneEvents() {
@@ -2200,28 +2751,52 @@
     if (mode === audioMode) return;
     audioMode = mode;
     const now = audioCtx.currentTime;
-    const targetFreqs = mode === 'dark' ? PAD_DARK : PAD_LIGHT;
-    const fadeT = mode === 'dark' ? 7.0 : 4.0;
+    // Use the current chord's voicing in the target mode (same chordIdx so
+    // the harmonic position is preserved across the morph).
+    const targetChord = mode === 'dark' ? CHORDS_DARK[chordIdx] : CHORDS_LIGHT[chordIdx];
+    const fadeT = mode === 'dark' ? 7.0 : 4.5;
 
     padNodes.forEach((v, i) => {
-      const f = targetFreqs[i];
-      // Use linearRamp on frequency directly (cancelScheduled to avoid stacking)
-      v.osc1.frequency.cancelScheduledValues(now);
-      v.osc2.frequency.cancelScheduledValues(now);
-      v.osc1.frequency.setValueAtTime(v.osc1.frequency.value, now);
-      v.osc2.frequency.setValueAtTime(v.osc2.frequency.value, now);
-      v.osc1.frequency.linearRampToValueAtTime(f, now + fadeT);
-      v.osc2.frequency.linearRampToValueAtTime(f * 2, now + fadeT);
+      const f = targetChord[i] || targetChord[targetChord.length - 1];
+      [v.osc1, v.osc2, v.osc3].forEach((osc, ratIdx) => {
+        const ratio = ratIdx === 0 ? 1 : ratIdx === 1 ? 2 : 3.01;
+        osc.frequency.cancelScheduledValues(now);
+        osc.frequency.setValueAtTime(osc.frequency.value, now);
+        osc.frequency.linearRampToValueAtTime(f * ratio, now + fadeT);
+      });
       v.voiceGain.gain.cancelScheduledValues(now);
       v.voiceGain.gain.setValueAtTime(v.voiceGain.gain.value, now);
       v.voiceGain.gain.linearRampToValueAtTime(
         mode === 'dark' ? PAD_DARK_GAINS[i] : PAD_LIGHT_GAINS[i],
         now + fadeT
       );
-      // Slow the LFO and deepen detune wobble in dark
+      // Deepen the detune wobble in dark for a more unstable feeling.
       v.lfoGain.gain.cancelScheduledValues(now);
-      v.lfoGain.gain.linearRampToValueAtTime(mode === 'dark' ? 4.5 : 1.4, now + fadeT);
+      v.lfoGain.gain.linearRampToValueAtTime(mode === 'dark' ? 6.0 : 2.5, now + fadeT);
+      // Darken the per-voice filter in dark mode (close the cutoff).
+      if (v.filter) {
+        v.filter.frequency.cancelScheduledValues(now);
+        v.filter.frequency.setValueAtTime(v.filter.frequency.value, now);
+        v.filter.frequency.linearRampToValueAtTime(
+          mode === 'dark' ? 280 + i * 80 : 700 + i * 280,
+          now + fadeT
+        );
+      }
     });
+
+    // Slow the shared filter LFO down in dark (longer breath, more dread).
+    if (padFilterLFO) {
+      padFilterLFO.frequency.cancelScheduledValues(now);
+      padFilterLFO.frequency.setValueAtTime(padFilterLFO.frequency.value, now);
+      padFilterLFO.frequency.linearRampToValueAtTime(mode === 'dark' ? 0.022 : 0.045, now + fadeT);
+    }
+
+    // Pull reverb wetter and darker in the room so the silence has weight.
+    if (reverbSend) {
+      reverbSend.gain.cancelScheduledValues(now);
+      reverbSend.gain.setValueAtTime(reverbSend.gain.value, now);
+      reverbSend.gain.linearRampToValueAtTime(mode === 'dark' ? 0.78 : 0.55, now + fadeT);
+    }
 
     // Crossfade buses
     melodyGain.gain.cancelScheduledValues(now);
@@ -2259,13 +2834,18 @@
   // For starting in dark mode (e.g. audio toggled on while already in hidden page)
   function applyModeImmediate(mode) {
     if (!audioCtx) return;
-    const targetFreqs = mode === 'dark' ? PAD_DARK : PAD_LIGHT;
+    const targetChord = mode === 'dark' ? CHORDS_DARK[chordIdx] : CHORDS_LIGHT[chordIdx];
     padNodes.forEach((v, i) => {
-      v.osc1.frequency.value = targetFreqs[i];
-      v.osc2.frequency.value = targetFreqs[i] * 2;
+      const f = targetChord[i] || targetChord[targetChord.length - 1];
+      v.osc1.frequency.value = f;
+      v.osc2.frequency.value = f * 2;
+      if (v.osc3) v.osc3.frequency.value = f * 3.01;
       v.voiceGain.gain.value = mode === 'dark' ? PAD_DARK_GAINS[i] : PAD_LIGHT_GAINS[i];
-      v.lfoGain.gain.value = mode === 'dark' ? 4.5 : 1.4;
+      v.lfoGain.gain.value = mode === 'dark' ? 6.0 : 2.5;
+      if (v.filter) v.filter.frequency.value = mode === 'dark' ? 280 + i * 80 : 700 + i * 280;
     });
+    if (padFilterLFO) padFilterLFO.frequency.value = mode === 'dark' ? 0.022 : 0.045;
+    if (reverbSend) reverbSend.gain.value = mode === 'dark' ? 0.78 : 0.55;
     if (mode === 'dark') {
       melodyGain.gain.value = 0;
       harmonyGain.gain.value = 0;
@@ -2288,6 +2868,7 @@
     if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = null; }
     if (arpeggioTimer) { clearTimeout(arpeggioTimer); arpeggioTimer = null; }
     if (droneTimer)  { clearTimeout(droneTimer);  droneTimer  = null; }
+    if (chordTimer)  { clearTimeout(chordTimer);  chordTimer  = null; }
     const now = audioCtx.currentTime;
     if (masterGain) {
       masterGain.gain.cancelScheduledValues(now);
@@ -2295,9 +2876,18 @@
       masterGain.gain.linearRampToValueAtTime(0, now + 0.8);
     }
     setTimeout(() => {
-      padNodes.forEach(v => { try { v.osc1.stop(); v.osc2.stop(); v.lfo.stop(); } catch (e) {} });
+      padNodes.forEach(v => {
+        try { v.osc1.stop(); } catch (e) {}
+        try { v.osc2.stop(); } catch (e) {}
+        try { if (v.osc3) v.osc3.stop(); } catch (e) {}
+        try { v.lfo.stop(); } catch (e) {}
+      });
       droneNodes.forEach(n => { try { n.stop(); } catch (e) {} });
+      try { if (padFilterLFO) padFilterLFO.stop(); } catch (e) {}
       padNodes = []; droneNodes = [];
+      padFilterLFO = null; padFilterLFOGain = null;
+      reverbNode = null; reverbSend = null;
+      chordIdx = 0;
       try { audioCtx.close(); } catch (e) {}
       audioCtx = null;
       audioPlaying = false;
@@ -2340,6 +2930,68 @@
 
   // Audio is OFF by default. The toggle button below pulses to invite a click;
   // ambient music starts only after explicit user interaction.
+
+  // ============================================================
+  // ATMOSPHERE & MOTION HOOKS
+  // - Page-load reveal
+  // - Hero parallax (sun, mountains, meadow drift opposite to scroll)
+  // - Cursor-following warm glow on the hero
+  // - Section shimmer bar trigger as each section enters
+  // ============================================================
+
+  // Mark body loaded so the global opacity rises from 0 to 1.
+  // We do this on next frame so the browser commits the initial state first.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => document.body.classList.add('loaded'));
+  });
+
+  // Hero parallax: bind scrollY to a CSS custom property that the hero
+  // art layers consume. rAF throttling keeps it cheap.
+  let lastScrollY = 0;
+  let parallaxQueued = false;
+  function applyParallax() {
+    parallaxQueued = false;
+    document.body.style.setProperty('--scroll-y', String(lastScrollY));
+  }
+  window.addEventListener('scroll', () => {
+    lastScrollY = window.scrollY;
+    if (!parallaxQueued) {
+      parallaxQueued = true;
+      requestAnimationFrame(applyParallax);
+    }
+  }, { passive: true });
+
+  // Cursor-following hero glow.  Only attaches the listener on the hero
+  // itself so the rest of the page doesn't pay any cost. Pointer position
+  // is written to CSS custom properties for the .hero-glow element to read.
+  const heroEl = document.querySelector('.hero');
+  if (heroEl) {
+    heroEl.addEventListener('mousemove', (e) => {
+      const rect = heroEl.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top)  / rect.height) * 100;
+      heroEl.style.setProperty('--mouse-x', x + '%');
+      heroEl.style.setProperty('--mouse-y', y + '%');
+    }, { passive: true });
+  }
+
+  // Section shimmer: re-use the existing IntersectionObserver pattern,
+  // adding a class to each <section> when it enters so the top-edge gold
+  // bar draws across.
+  const shimmerIO = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('reveal-shimmer', 'in');
+        shimmerIO.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.18, rootMargin: '0px 0px -100px 0px' });
+  document.querySelectorAll('section').forEach(s => shimmerIO.observe(s));
+
+  // Smoother programmatic scroll for nav clicks. The CSS already enables
+  // smooth scroll, but we lengthen the duration feel by adding a small
+  // pre-delay if the user is at the top (gives the page a beat before
+  // diving in, instead of snapping immediately).
 </script>
 
 </body>
